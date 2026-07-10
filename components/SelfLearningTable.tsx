@@ -2145,7 +2145,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
     
     setIsUploading(true);
     try {
-      const { uploadFile } = await import('../services/firebase');
+      const { uploadFile } = await import('../services/convex');
       const storedUser = localStorage.getItem('dps_user');
       let userId = 'anon';
       if (storedUser) {
@@ -4916,12 +4916,12 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
     }
 
     try {
-      const { createSharedNote } = await import('../services/firebase');
+      const { createSharedNote } = await import('../services/convex');
       const shareId = await createSharedNote(userId, userName, 'self-learning', sharingTopic.title, sharingTopic);
       const link = window.location.origin + window.location.pathname + '?share=' + shareId;
       setGeneratedShareLink(link);
     } catch (error: any) {
-      console.error("Firebase sharing failed:", error);
+      console.error("Convex sharing failed:", error);
       if (error.message?.includes("AUTHENTICATION_REQUIRED")) {
         setCloudShareError("Cloud sharing requires an account. Please sign in via System Control/Settings to generate public links.");
       } else {
@@ -5014,7 +5014,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
        setSelectedTopicId(null);
     }
 
-    import('../services/firebase').then(({ saveTopic }) => {
+    import('../services/convex').then(({ saveTopic }) => {
       const storedUser = localStorage.getItem('dps_user');
       if (storedUser) {
         try {
@@ -8013,7 +8013,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
               <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-450 rounded-xl text-xs flex flex-col gap-1">
                 <p className="font-extrabold flex items-center gap-1.5 uppercase tracking-wide">⚡ Smart Compression & Chunking Enabled</p>
                 <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
-                  This folder is <strong>{getTopicSizeString(sharingTopic)}</strong>. Firebase handles large payloads via Storage, so you can share it seamlessly!
+                  This folder is <strong>{getTopicSizeString(sharingTopic)}</strong>. Convex handles large payloads efficiently, so you can share it seamlessly!
                 </p>
               </div>
             )}

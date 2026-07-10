@@ -56,7 +56,7 @@ const JournalBlock: React.FC<JournalBlockProps> = ({ title, icon, children, bgCo
   const handleShareJournal = async () => {
     setIsSharingJournal(true);
     try {
-      const { createSharedNote } = await import('../services/firebase');
+      const { createSharedNote } = await import('../services/convex');
       const storedUser = localStorage.getItem('dps_user');
       let userName = currentUser?.name || 'Chanthy';
       let userId = currentUser?.uid || 'unknown';

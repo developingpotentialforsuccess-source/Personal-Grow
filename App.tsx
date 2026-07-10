@@ -36,7 +36,7 @@ import {
   saveData,
   logOut,
   authService,
-} from "./services/firebase";
+} from "./services/convex";
 import { decodeFromURLSafeBase64 } from "./services/sharingEncoder";
 import { storage } from "./services/storage";
 import { Menu, MessageSquare, X, GraduationCap, Cloud, Check } from "lucide-react";
@@ -362,7 +362,7 @@ const App: React.FC = () => {
         isSyncingRef.current = true;
         
         try {
-          // Pass 'true' to ensure immediate network dispatch in services/firebase.ts
+          // Pass 'true' to ensure immediate network dispatch in services/convex.ts
           await saveData(currentUser.uid!, dataToSave, true);
           const now = Date.now();
           lastSyncedUpdatedAtRef.current = dataToSave.updatedAt || now;
@@ -426,7 +426,7 @@ const App: React.FC = () => {
       }
     } else if (shareId) {
       setIsFetchSharedLoading(true);
-      import("./services/firebase").then(({ getSharedNote }) => {
+      import("./services/convex").then(({ getSharedNote }) => {
         getSharedNote(shareId)
           .then((sharedDoc) => {
             setIsFetchSharedLoading(false);
@@ -475,7 +475,7 @@ const App: React.FC = () => {
         const updatedTopics = [...currentTopics, clonedTopic];
         handleUpdate({ ...data, dpssTopics: updatedTopics });
 
-        import("./services/firebase").then(({ saveTopic }) => {
+        import("./services/convex").then(({ saveTopic }) => {
           if (currentUser?.uid) {
             saveTopic(currentUser.uid, clonedTopic, "dpss");
           }
@@ -488,7 +488,7 @@ const App: React.FC = () => {
         const updatedTopics = [...currentTopics, clonedTopic];
         handleUpdate({ ...data, selfLearningTopics: updatedTopics });
 
-        import("./services/firebase").then(({ saveTopic }) => {
+        import("./services/convex").then(({ saveTopic }) => {
           if (currentUser?.uid) {
             saveTopic(currentUser.uid, clonedTopic, "selfLearning");
           }
@@ -507,7 +507,7 @@ const App: React.FC = () => {
 
       handleUpdate({ ...data, journalEntries: newEntries });
 
-      import("./services/firebase").then(({ saveJournalEntry }) => {
+      import("./services/convex").then(({ saveJournalEntry }) => {
         if (currentUser?.uid) {
           saveJournalEntry(currentUser.uid, targetDate, entry);
         }
@@ -523,7 +523,7 @@ const App: React.FC = () => {
 
       handleUpdate({ ...data, dailyNotes: newNotes });
 
-      import("./services/firebase").then(({ saveDailyNote }) => {
+      import("./services/convex").then(({ saveDailyNote }) => {
         if (currentUser?.uid) {
           saveDailyNote(currentUser.uid, targetDate, content);
         }
@@ -780,7 +780,7 @@ const App: React.FC = () => {
 
     if (currentUser?.uid) {
       try {
-        const { deleteStudent } = await import("./services/firebase");
+        const { deleteStudent } = await import("./services/convex");
         await deleteStudent(currentUser.uid, id);
       } catch (error) {
         console.error("Failed to delete student:", error);
@@ -834,7 +834,7 @@ const App: React.FC = () => {
 
     if (currentUser?.uid) {
       try {
-        const { deleteTopic, saveTopic } = await import("./services/firebase");
+        const { deleteTopic, saveTopic } = await import("./services/convex");
         if (isRoot) {
           await deleteTopic(currentUser.uid, id, category);
         } else {
@@ -891,7 +891,7 @@ const App: React.FC = () => {
     });
 
     if (currentUser?.uid && updatedStudent) {
-      const { saveStudent } = await import("./services/firebase");
+      const { saveStudent } = await import("./services/convex");
       saveStudent(currentUser.uid, updatedStudent);
     }
   };
@@ -908,7 +908,7 @@ const App: React.FC = () => {
     });
 
     if (currentUser?.uid && topicToSave) {
-      const { saveTopic } = await import("./services/firebase");
+      const { saveTopic } = await import("./services/convex");
       saveTopic(currentUser.uid, topicToSave, category);
     }
   };
@@ -920,7 +920,7 @@ const App: React.FC = () => {
     });
 
     if (currentUser?.uid) {
-      const { saveDailyNote } = await import("./services/firebase");
+      const { saveDailyNote } = await import("./services/convex");
       saveDailyNote(currentUser.uid, date, content);
     }
   };
@@ -938,7 +938,7 @@ const App: React.FC = () => {
     });
 
     if (currentUser?.uid) {
-      const { saveJournalEntry } = await import("./services/firebase");
+      const { saveJournalEntry } = await import("./services/convex");
       saveJournalEntry(currentUser.uid, date, entry);
     }
   };
@@ -960,7 +960,7 @@ const App: React.FC = () => {
     });
 
     if (currentUser?.uid && newCompletions) {
-      const { saveHabitCompletionBulk } = await import("./services/firebase");
+      const { saveHabitCompletionBulk } = await import("./services/convex");
       saveHabitCompletionBulk(currentUser.uid, date, newCompletions[date]);
     }
   };
@@ -987,7 +987,7 @@ const App: React.FC = () => {
     });
 
     if (currentUser?.uid) {
-      const { saveExpense } = await import("./services/firebase");
+      const { saveExpense } = await import("./services/convex");
       await saveExpense(currentUser.uid, expense, isDelete);
     }
   };
@@ -1055,7 +1055,7 @@ const App: React.FC = () => {
       });
 
       if (currentUser?.uid) {
-        import("./services/firebase").then(({ saveStudent }) => {
+        import("./services/convex").then(({ saveStudent }) => {
           for (const student of newStudentsBatch) {
             saveStudent(currentUser.uid!, student);
           }
@@ -1117,7 +1117,7 @@ const App: React.FC = () => {
       handleUpdate({ ...data, students: updatedStudents });
 
       if (currentUser?.uid) {
-        const { saveStudent } = await import("./services/firebase");
+        const { saveStudent } = await import("./services/convex");
         const student = updatedStudents.find((s) => s.id === id);
         if (student) await saveStudent(currentUser.uid, student);
       }
@@ -1482,7 +1482,7 @@ const App: React.FC = () => {
                 Cloud Sync Success
               </span>
               <span className="text-[9px] font-medium leading-normal text-slate-400 mt-1">
-                Data saved successfully to Firebase
+                Data saved successfully to Convex
               </span>
             </div>
             <div className="flex items-center justify-center w-4.5 h-4.5 rounded-full bg-emerald-500 text-slate-950 ml-2 shadow-inner">

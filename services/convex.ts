@@ -265,9 +265,7 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
     onUpdate(combined);
   };
 
-  const subData = (client as any).subscribe("dps:fetchDpsData", { userId });
-  const unsubData = subData.onUpdate(() => {
-    const res = (client as any).localQueryResult("dps:fetchDpsData", { userId });
+  const unsubData = client.onUpdate("dps:fetchDpsData" as any, { userId }, (res: any) => {
     if (res) {
       try {
         mainDoc = JSON.parse(res.dataStr);
@@ -282,18 +280,14 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
     mergeAndEmit();
   });
 
-  const subStudents = (client as any).subscribe("dps:fetchStudents", { owner_id: userId });
-  const unsubStudents = subStudents.onUpdate(() => {
-    const res = (client as any).localQueryResult("dps:fetchStudents", { owner_id: userId });
+  const unsubStudents = client.onUpdate("dps:fetchStudents" as any, { owner_id: userId }, (res: any) => {
     if (Array.isArray(res)) {
       students = res.map(item => ({ ...item.data, id: item.id }));
     }
     mergeAndEmit();
   });
 
-  const subTopics = (client as any).subscribe("dps:fetchTopics", { owner_id: userId });
-  const unsubTopics = subTopics.onUpdate(() => {
-    const res = (client as any).localQueryResult("dps:fetchTopics", { owner_id: userId });
+  const unsubTopics = client.onUpdate("dps:fetchTopics" as any, { owner_id: userId }, (res: any) => {
     if (Array.isArray(res)) {
       topics = res.map(item => ({ ...item.data, id: item.id, content: item.content, title: item.title, parentId: item.parentId, category: item.category }));
     }

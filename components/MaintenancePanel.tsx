@@ -4,7 +4,7 @@ import {
   ShieldCheck, RefreshCw, Clock, Lock, Unlock, Download, Upload, Database, ExternalLink, Camera, Sparkles,
   CalendarDays, CalendarRange, History
 } from 'lucide-react';
-import { getCloudBackups, createCloudBackup, getFirebaseProjectId } from '../services/firebase';
+import { getCloudBackups, createCloudBackup, getFirebaseProjectId } from '../services/convex';
 import { format, differenceInDays } from 'date-fns';
 
 interface Props {
@@ -29,35 +29,19 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
   const checkSyncStatus = async () => {
     setCheckingSync(true);
     try {
-      const { isFirebaseConfigured, checkFirebaseConnection } = await import('../services/firebase');
+      const { isConvexConfigured: isFirebaseConfigured, checkConvexConnection: checkFirebaseConnection } = await import('../services/convex');
       const configured = isFirebaseConfigured();
       const connected = await checkFirebaseConnection();
       setSyncStatus({ 
         configured, 
         connected, 
-        error: !configured ? "Environment variables missing." : (connected ? null : "Could not reach Firebase.")
+        error: !configured ? "Environment variables missing." : (connected ? null : "Could not reach Convex Cloud.")
       });
     } catch (err: any) {
       setSyncStatus({ configured: false, connected: false, error: err.message || String(err) });
     } finally {
       setCheckingSync(false);
     }
-  };
-
-  const FIREBASE_SETUP_INFO = `
-Firestore Security Rules:
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /dps_data/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-  `.trim();
-
-  const handleCopyRules = () => {
-    navigator.clipboard.writeText(FIREBASE_SETUP_INFO);
-    alert("Firebase Rules copied to clipboard!");
   };
 
   useEffect(() => {
@@ -125,7 +109,7 @@ service cloud.firestore {
     if (confirm(`CRITICAL WARNING: You are about to restore data from ${format(new Date(backup.timestamp), 'PPPP p')}. This will delete all changes made after that time. Are you sure?`)) {
        try {
          setLoading(true);
-         const { fetchBackupPayload } = await import('../services/firebase');
+         const { fetchBackupPayload } = await import('../services/convex');
          const fullData = await fetchBackupPayload(backup);
          if (fullData) {
            onUpdate({ ...fullData, systemLocked: false });
@@ -298,7 +282,7 @@ service cloud.firestore {
                             ))}
                         </div>
 
-                        {/* Firebase Integration Control Panel */}
+                        {/* Convex Integration Control Panel */}
                         <div className="bg-slate-50 border border-slate-200 p-8 rounded-[40px] mt-12 space-y-6">
                             <div className="flex items-start justify-between gap-6 flex-wrap md:flex-nowrap">
                                 <div className="flex items-start gap-5">
@@ -313,10 +297,10 @@ service cloud.firestore {
                                     </div>
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-3">
-                                            <h4 className="font-black text-slate-800 uppercase text-base tracking-tight leading-none">Firebase Cloud Database</h4>
+                                            <h4 className="font-black text-slate-800 uppercase text-base tracking-tight leading-none">Convex Cloud Database</h4>
                                             <div className="flex items-center gap-2">
                                               <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-100 px-2 py-0.5 rounded">
-                                                Project: {getFirebaseProjectId()}
+                                                Engine: {getFirebaseProjectId()}
                                               </span>
                                               {currentUser?.uid && (
                                                 <span className="text-[9px] font-bold text-slate-400 bg-white border border-slate-100 px-2 py-0.5 rounded">
@@ -343,17 +327,17 @@ service cloud.firestore {
                                         </div>
                                         <p className="text-xs text-slate-500 font-medium">
                                             {syncStatus.connected 
-                                                ? "Your master digital portal sheets, topics, and student ledger are actively saved in Firebase. Real-time multi-browser sync is enabled."
+                                                ? "Your master digital portal sheets, topics, and student ledger are actively saved in Convex Cloud. Real-time multi-browser sync is enabled."
                                                 : !syncStatus.configured 
-                                                    ? "Connected to reactive local database storage. Please configure Firebase to synchronize records globally."
-                                                    : `An issue occurred while reaching your Firebase project: ${syncStatus.error}`
+                                                    ? "Connected to reactive local database storage. Please configure Convex to synchronize records globally."
+                                                    : `An issue occurred while reaching your Convex project: ${syncStatus.error}`
                                             }
                                         </p>
                                         
                                         <div className="mt-3 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-1.5 shadow-sm">
                                           <h5 className="text-[10px] font-black text-indigo-900 uppercase tracking-wider">Vercel & Deployment Sync Notice</h5>
                                           <p className="text-[9px] text-indigo-700 leading-relaxed font-bold">
-                                            If redeploying on Vercel, ensure you include your <span className="text-indigo-900 underline decoration-indigo-300">firebase-applet-config.json</span>. 
+                                            If redeploying on Vercel, ensure you include your <span className="text-indigo-900 underline decoration-indigo-300">VITE_CONVEX_URL</span> environment variable. 
                                           </p>
                                         </div>
                                     </div>
@@ -372,23 +356,23 @@ service cloud.firestore {
                                 <div className="p-6 bg-slate-100/50 rounded-3xl border border-slate-200/60 text-xs text-slate-600 space-y-5">
                                     <div className="flex items-center gap-2 text-rose-800 font-bold uppercase tracking-widest text-[11px]">
                                         <Sparkles size={14} className="text-orange-500" />
-                                        ⚡ Firebase Cloud Sync Setup
+                                        ⚡ Convex Cloud Sync Setup
                                     </div>
 
                                     <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl space-y-3">
-                                        <p className="font-bold text-orange-950 text-xs leading-snug underline">👉 CRITICAL Vercel Setup:</p>
+                                        <p className="font-bold text-orange-950 text-xs leading-snug underline">👉 CRITICAL Convex Setup:</p>
                                         <p className="text-[10px] text-orange-900 font-medium leading-relaxed">
-                                          Ensure your project config is intact during deployment.
+                                          Ensure your Convex Deployment URL is added as <code className="font-bold">VITE_CONVEX_URL</code> in your environment variables.
                                         </p>
                                     </div>
 
                                     <div className="text-slate-800 font-bold uppercase tracking-wide text-[10px]">
-                                        🛠️ Vercel Deployment Sync Steps
+                                        🛠️ Vercel / Hosting Deployment Steps
                                     </div>
                                     <ul className="list-disc list-inside space-y-2 pl-1 leading-relaxed text-[11px] font-medium text-slate-500">
-                                        <li>Go to your **Vercel Project Settings**.</li>
-                                        <li>Make sure `firebase-applet-config.json` is deployed.</li>
-                                        <li>Redeploy your application on Vercel.</li>
+                                        <li>Go to your **Vercel or hosting Dashboard**.</li>
+                                        <li>Add <code className="font-mono text-xs bg-white px-1.5 py-0.5 rounded border border-slate-200">VITE_CONVEX_URL</code> with your Convex Cloud URL.</li>
+                                        <li>Deploy your backend functions to Convex via your linked repository or CLI.</li>
                                     </ul>
                                 </div>
                             )}

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AppSettings, CurrentUser, AppData } from '../types';
 import { X, Save, Settings2, Type, Baseline, Paintbrush, Check, Cloud, LogIn, LogOut, Image as ImageIcon, Trash2, FileText, Coins, Table, Download, Upload, RefreshCw, ExternalLink } from 'lucide-react';
 import { PAPER_STYLES } from '../src/styles/paperStyles';
-import { getFirebaseProjectId } from '../services/firebase';
+import { getFirebaseProjectId } from '../services/convex';
 
 declare global {
   interface Window {
@@ -159,9 +159,6 @@ const WALLPAPER_PRESETS_GROUPED = {
 const getDirectAuthProvidersUrl = (): string => {
   return "https://dashboard.convex.dev";
 };
-const getFirebaseDomainsUrl = (): string => {
-  return "https://dashboard.convex.dev";
-};
 
 export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUpdate, currentUser, onLogin, onPhoneLogin, onLogout, appData, onImportData, lastSyncedTime }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -213,13 +210,13 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
   const checkSyncStatus = async () => {
     setCheckingSync(true);
     try {
-      const { isFirebaseConfigured, checkFirebaseConnection } = await import('../services/firebase');
+      const { isFirebaseConfigured, checkFirebaseConnection } = await import('../services/convex');
       const configured = isFirebaseConfigured();
       const connected = await checkFirebaseConnection();
       setSyncStatus({ 
         configured, 
         connected, 
-        error: !configured ? "Environment variables missing." : (connected ? null : "Could not reach Firebase.")
+        error: !configured ? "Environment variables missing." : (connected ? null : "Could not reach Convex Cloud.")
       });
     } catch (err: any) {
       setSyncStatus({ configured: false, connected: false, error: err.message || String(err) });
@@ -703,10 +700,8 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
     setEmailError('');
     setIsEmailLoading(true);
     try {
-      const { authService, isFirebaseConfigured } = await import('../services/firebase');
-      if (!isFirebaseConfigured()) {
-        throw new Error("Firebase is not configured yet!");
-      }
+      const { authService, isFirebaseConfigured } = await import('../services/convex');
+      const configured = isFirebaseConfigured();
       if (isSignUpMode) {
         const { error } = await authService.auth.signUp({ email, password });
         if (error) {
@@ -715,8 +710,9 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
           }
           throw error;
         }
-        
-        // Firebase automatically signs in after sign up by default
+        if (!configured) {
+          alert("Account created successfully in Local Mode! To enable full cloud sync across devices, please configure VITE_CONVEX_URL in your hosting environment.");
+        }
       } else {
         const { error } = await authService.auth.signInWithPassword({ email, password });
         if (error) {
@@ -724,6 +720,9 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
             throw new Error("Invalid email or password. Please check your credentials or sign up if you don't have an account.");
           }
           throw error;
+        }
+        if (!configured) {
+          alert("Signed in successfully in Local Mode! Note that cloud synchronization is disabled because VITE_CONVEX_URL is not configured.");
         }
       }
       // Do not call onLogin() here because onLogin maps to signInWithGoogle.
@@ -822,7 +821,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                             <p className="text-xs text-slate-500 leading-relaxed mb-4">
                               Your data is only stored in this browser. Please sign in to sync.
                               <br />
-                              <span className="text-[10px] text-orange-600 font-bold italic block mt-1">Note: We recently switched to Firebase. Please Sign Up again if you haven't yet on this new version.</span>
+                              <span className="text-[10px] text-orange-600 font-bold italic block mt-1">Note: We recently switched to Convex Cloud. Please Sign Up again if you haven't yet on this new version.</span>
                             </p>
                             {emailError && (
                               <div className="mb-4 bg-red-50 text-red-650 border border-red-200 p-4 rounded-xl text-xs font-semibold text-left leading-relaxed shadow-sm">
@@ -871,11 +870,11 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                          }
                                          setIsEmailLoading(true);
                                          try {
-                                           const { authService: authS } = await import('../services/firebase');
+                                           const { authService: authS } = await import('../services/convex');
                                            // @ts-ignore
                                            const { error } = await authS.auth.resetPassword(email);
                                            if (error) throw error;
-                                           alert("Password reset email sent! Please check your inbox and SPAM folder.\n\nNote: If you don't receive an email, it might be because this account doesn't exist in our new Firebase system yet. Please try signing up again if you were previously a Supabase user.");
+                                           alert("Password reset email sent! Please check your inbox and SPAM folder.\n\nNote: If you don't receive an email, it might be because this account doesn't exist in our new Convex system yet. Please try signing up again if you were previously a Supabase user.");
                                          } catch (e: any) {
                                            setEmailError(e.message);
                                          } finally {
@@ -907,7 +906,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                       <button 
                                         onClick={async () => {
                                           try {
-                                            const { authService } = await import('../services/firebase');
+                                            const { authService } = await import('../services/convex');
                                             // @ts-ignore
                                             await authService.auth.signInWithOAuth({ provider: 'google' });
                                           } catch (e: any) { setEmailError(e.message); }
@@ -921,7 +920,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                       <button 
                                         onClick={async () => {
                                           try {
-                                            const { authService } = await import('../services/firebase');
+                                            const { authService } = await import('../services/convex');
                                             // @ts-ignore
                                             await authService.auth.signInWithOAuth({ provider: 'facebook' });
                                           } catch (e: any) { setEmailError(e.message); }
@@ -934,11 +933,9 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                    </div>
 
                                    <div className="pt-2 text-center text-[10px] text-slate-500 font-medium">
-                                      <p>Manage Auth Providers or add Domains in Firebase:</p>
+                                      <p>Manage your database and authentication in Convex:</p>
                                       <div className="flex gap-2 justify-center mt-1">
-                                        <a href={getDirectAuthProvidersUrl()} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">Auth Providers</a>
-                                        <span className="text-slate-300">|</span>
-                                        <a href={getFirebaseDomainsUrl()} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">Auth Domains</a>
+                                        <a href="https://dashboard.convex.dev" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">Convex Dashboard</a>
                                       </div>
                                    </div>
                                 </div>
