@@ -1,0 +1,37 @@
+// Backward compatibility bridge file. Swapped Firebase for Convex.
+// All requests are proxied directly to the Convex implementation.
+
+export {
+  isConvexConfigured as isFirebaseConfigured,
+  checkFirebaseConnection,
+  checkConvexConnection,
+  getFirebaseProjectId,
+  getFirebaseAuthProvidersUrl,
+  logOut,
+  authService,
+  subscribeToData,
+  fetchData,
+  saveData,
+  processSyncQueue,
+  uploadFile,
+  deleteFile,
+  saveTopic,
+  deleteStudent,
+  saveStudent,
+  deleteTopic,
+  saveAttendance,
+  saveDailyNote,
+  saveJournalEntry,
+  saveExpense,
+  saveTopicsBulk,
+  saveHabitCompletionBulk,
+  saveHabitList,
+  deleteHabit,
+  saveHabitCompletion,
+  getSharedNote,
+  createSharedNote,
+  getCloudBackups,
+  createCloudBackup,
+  fetchBackupPayload,
+  getSyncStatus
+} from "./convex";
