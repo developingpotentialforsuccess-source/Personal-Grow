@@ -840,6 +840,29 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, [currentUser?.uid, isAuthInitializing]);
 
+  const forceSync = async () => {
+    if (!currentUser?.uid || isSyncing) return;
+    setIsSyncing(true);
+    isSyncingRef.current = true;
+    try {
+      const { saveData } = await import("./services/convex");
+      const dataToSave = currentDataRef.current;
+      await saveData(currentUser.uid, dataToSave, true);
+      const now = Date.now();
+      lastSyncedUpdatedAtRef.current = dataToSave.updatedAt || now;
+      setLastSyncedTime(now);
+      previousDataSyncRef.current = JSON.stringify(dataToSave);
+      
+      setShowSyncToast(true);
+      setTimeout(() => setShowSyncToast(false), 2000);
+    } catch (err) {
+      console.error("Manual Sync Error:", err);
+    } finally {
+      setIsSyncing(false);
+      isSyncingRef.current = false;
+    }
+  };
+
   const handlePermanentDeleteStudent = async (id: string) => {
     const previousData = { ...data };
     handleUpdate((prev) => {
@@ -1304,6 +1327,7 @@ const App: React.FC = () => {
           onUndo={undo}
           onRedo={redo}
           isSyncing={isSyncing}
+          onSyncNow={forceSync}
         />
 
         <AIModal

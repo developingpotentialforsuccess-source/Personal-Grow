@@ -342,8 +342,7 @@ export const saveData = async (userId: string, dataState: any, instant: boolean 
   }
 
   try {
-    const { students, dpssTopics, selfLearningTopics, ...metaOnly } = dataState;
-    const dataStr = JSON.stringify(metaOnly);
+    const dataStr = JSON.stringify(dataState);
     const updatedAt = dataState.updatedAt || Date.now();
     const version = dataState.version || 1;
 
@@ -372,8 +371,7 @@ export const processSyncQueue = async () => {
 
   const syncPromises = queue.map(async (item) => {
     try {
-      const { students, dpssTopics, selfLearningTopics, ...metaOnly } = item.data;
-      const dataStr = JSON.stringify(metaOnly);
+      const dataStr = JSON.stringify(item.data);
       const updatedAt = item.timestamp;
       const version = item.data.version || 1;
 

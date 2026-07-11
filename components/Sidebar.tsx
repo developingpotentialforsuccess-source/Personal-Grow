@@ -63,6 +63,7 @@ interface SidebarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   isSyncing?: boolean;
+  onSyncNow?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -93,7 +94,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   canRedo,
   onUndo,
   onRedo,
-  isSyncing
+  isSyncing,
+  onSyncNow
 }) => {
 
   const [isOnline, setIsOnline] = useState(true);
@@ -201,12 +203,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <p className="text-[11px] font-black text-slate-900 dark:text-slate-200 truncate tracking-tight leading-tight">{currentUser?.name}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-blue-500 animate-bounce' : isOnline && currentUser?.uid && isConvexConfigured() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                    <span 
-                      className={`text-[8px] font-black leading-none uppercase ${isSyncing ? 'text-blue-600' : isOnline && currentUser?.uid && isConvexConfigured() ? 'text-emerald-600' : 'text-amber-600/90'}`} 
-                      title={isSyncing ? "Syncing..." : isOnline && currentUser?.uid && isConvexConfigured() ? "Online" : "Local / Offline"}
+                    <button 
+                      onClick={onSyncNow}
+                      disabled={isSyncing || !isOnline || !currentUser?.uid}
+                      className={`text-[8px] font-black leading-none uppercase transition-all hover:scale-105 active:scale-95 disabled:hover:scale-100 ${isSyncing ? 'text-blue-600' : isOnline && currentUser?.uid && isConvexConfigured() ? 'text-emerald-600 cursor-pointer' : 'text-amber-600/90'}`} 
+                      title={isSyncing ? "Syncing..." : isOnline && currentUser?.uid && isConvexConfigured() ? "Cloud Online (Click to Force Sync)" : "Local / Offline"}
                     >
-                      {isSyncing ? 'Sync' : isOnline && currentUser?.uid && isConvexConfigured() ? 'Online' : 'Local'}
-                    </span>
+                      {isSyncing ? 'Syncing...' : isOnline && currentUser?.uid && isConvexConfigured() ? 'Online' : 'Local'}
+                    </button>
                   </div>
                 </div>
                 {(!currentUser?.uid) && (
