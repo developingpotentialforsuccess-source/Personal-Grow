@@ -62,47 +62,49 @@ const triggerAuthChange = (session: any) => {
   });
 };
 
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { firebaseAuth } from './googleDrive';
+
 export const authService = {
   auth: {
     onAuthStateChange: (callback: any) => {
       authChangeCallbacks.push(callback);
-      // Immediately trigger with current session
-      const stored = localStorage.getItem("dps_user");
-      if (stored) {
-        try {
-          const user = JSON.parse(stored);
-          const email = user.email;
-          const uid = email || user.uid || "local-user";
+      const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+        if (user) {
           const session = {
             user: {
-              id: uid,
-              email: email,
-              user_metadata: { full_name: user.name || "User" }
+              id: user.uid,
+              email: user.email,
+              user_metadata: { full_name: user.displayName || user.email?.split('@')[0] || "User" }
             }
           };
-          setTimeout(() => {
-            try {
-              callback('SIGNED_IN', session);
-            } catch (e) {}
-          }, 10);
-        } catch {
-          setTimeout(() => {
-            try {
-              callback('SIGNED_OUT', null);
-            } catch (e) {}
-          }, 10);
-        }
-      } else {
-        setTimeout(() => {
+          
+          const role = "Admin";
+          const newUser = { name: session.user.user_metadata.full_name, role, uid: user.uid, email: user.email };
+          localStorage.setItem("dps_user", JSON.stringify(newUser));
+
+          try {
+            callback('SIGNED_IN', session);
+          } catch (e) {}
+        } else {
+          localStorage.removeItem("dps_user");
           try {
             callback('SIGNED_OUT', null);
           } catch (e) {}
-        }, 10);
-      }
+        }
+      });
       return {
         data: {
           subscription: {
             unsubscribe: () => {
+              unsubscribe();
               authChangeCallbacks = authChangeCallbacks.filter(cb => cb !== callback);
             }
           }
@@ -110,102 +112,80 @@ export const authService = {
       };
     },
     getSession: async () => {
-      const stored = localStorage.getItem("dps_user");
-      if (stored) {
-        try {
-          const user = JSON.parse(stored);
-          const email = user.email;
-          const uid = email || user.uid || "local-user";
-          return {
-            data: {
-              session: {
-                user: {
-                  id: uid,
-                  email: email,
-                  user_metadata: { full_name: user.name || "User" }
-                }
+      const user = firebaseAuth.currentUser;
+      if (user) {
+        return {
+          data: {
+            session: {
+              user: {
+                id: user.uid,
+                email: user.email,
+                user_metadata: { full_name: user.displayName || user.email?.split('@')[0] || "User" }
               }
             }
-          };
-        } catch {}
+          }
+        };
       }
       return { data: { session: null } };
     },
     signUp: async ({ email, password, options }: any) => {
       try {
-        const name = options?.data?.full_name || email.split('@')[0] || "User";
-        const uid = email; // Always use email as stable uid for sync consistency across devices
-
-        if (client) {
-          // Register in Convex DB
-          await (client as any).mutation("dps:createUser", {
-            email,
-            password,
-            name,
-            role: "Admin"
-          });
-        }
-
-        const newUser = { name, role: "Admin", uid, email };
-        localStorage.setItem("dps_user", JSON.stringify(newUser));
-        triggerAuthChange({ user: { id: uid, email, user_metadata: { full_name: name } } });
-        return { data: { user: { id: uid, email } }, error: null };
+        const cred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        return { data: { user: { id: cred.user.uid, email: cred.user.email } }, error: null };
       } catch (e: any) {
         return { data: null, error: e };
       }
     },
     signInWithPassword: async ({ email, password }: any) => {
       try {
-        let name = email.split('@')[0] || "User";
-        const uid = email; // Always use email as stable uid for sync consistency across devices
-        let role = "Admin";
-
-        if (client) {
-          // Validate with Convex DB
-          const convexUser = await (client as any).query("dps:getUser", { email });
-          if (!convexUser) {
-            return { data: null, error: new Error("User not found.") };
-          }
-          if (convexUser.password !== password) {
-            return { data: null, error: new Error("Invalid password.") };
-          }
-          name = convexUser.name;
-          role = (convexUser.role as any) || "Admin";
-        }
-
-        const newUser = { name, role, uid, email };
-        localStorage.setItem("dps_user", JSON.stringify(newUser));
-        triggerAuthChange({ user: { id: uid, email, user_metadata: { full_name: name } } });
-        return { data: { session: { user: { id: uid, email, user_metadata: { full_name: name } } } }, error: null };
+        const cred = await signInWithEmailAndPassword(firebaseAuth, email, password);
+        return { 
+          data: { 
+            session: { 
+              user: { 
+                id: cred.user.uid, 
+                email: cred.user.email, 
+                user_metadata: { full_name: cred.user.displayName || cred.user.email?.split('@')[0] || "User" } 
+              } 
+            } 
+          }, 
+          error: null 
+        };
       } catch (e: any) {
         return { data: null, error: e };
       }
     },
     signInWithOAuth: async ({ provider, email: customEmail }: { provider: string; email?: string }) => {
-      const email = customEmail || `${provider}_user@example.com`;
-      const uid = email; // Always use email as stable uid for sync consistency across devices
-      const name = customEmail ? (customEmail.split('@')[0] || "User") : `${provider.toUpperCase()} User`;
-      const newUser = { name, role: "Admin", uid, email };
-      localStorage.setItem("dps_user", JSON.stringify(newUser));
-      triggerAuthChange({ user: { id: uid, email, user_metadata: { full_name: name } } });
-      return { data: { session: { user: { id: uid, email, user_metadata: { full_name: name } } } }, error: null };
+      try {
+        const authProvider = new GoogleAuthProvider();
+        const customParams: any = { prompt: 'select_account' };
+        if (customEmail) {
+          customParams.login_hint = customEmail;
+        }
+        authProvider.setCustomParameters(customParams);
+        const cred = await signInWithPopup(firebaseAuth, authProvider);
+        return { 
+          data: { 
+            session: { 
+              user: { 
+                id: cred.user.uid, 
+                email: cred.user.email, 
+                user_metadata: { full_name: cred.user.displayName || cred.user.email?.split('@')[0] || "User" } 
+              } 
+            } 
+          }, 
+          error: null 
+        };
+      } catch (e: any) {
+        return { data: null, error: e };
+      }
     },
     signInWithPhoneNumber: async (phone: string, appVerifier: any) => {
-      const email = `${phone}@example.com`;
-      const uid = email; // Always use phone-email as stable uid for sync consistency across devices
-      const name = `Phone User`;
-      const newUser = { name, role: "Admin", uid, email };
-      localStorage.setItem("dps_user", JSON.stringify(newUser));
-      triggerAuthChange({ user: { id: uid, email, user_metadata: { full_name: name } } });
-      return { data: { confirm: () => {} }, error: null };
+      return { data: { confirm: () => {} }, error: new Error("Phone auth not implemented") };
     },
     signOut: async () => {
       localStorage.removeItem("dps_user");
-      authChangeCallbacks.forEach(cb => {
-        try {
-          cb('SIGNED_OUT', null);
-        } catch (e) {}
-      });
+      await firebaseSignOut(firebaseAuth);
     },
     resetPassword: async (email: string) => {
       return { error: null };

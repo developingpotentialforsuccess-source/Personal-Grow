@@ -194,6 +194,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSignUpMode, setIsSignUpMode] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
@@ -698,6 +699,12 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
 
   const handleEmailPasswordAction = async () => {
     setEmailError('');
+    
+    if (isSignUpMode && password !== confirmPassword) {
+      setEmailError("Passwords do not match.");
+      return;
+    }
+
     setIsEmailLoading(true);
     try {
       const { authService, isFirebaseConfigured } = await import('../services/convex');
@@ -870,9 +877,19 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                      onChange={(e) => setPassword(e.target.value)}
                                      disabled={isEmailLoading}
                                    />
+                                   {isSignUpMode && (
+                                     <input 
+                                       type="password"
+                                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400"
+                                       placeholder="Confirm Password"
+                                       value={confirmPassword}
+                                       onChange={(e) => setConfirmPassword(e.target.value)}
+                                       disabled={isEmailLoading}
+                                     />
+                                   )}
                                    <button 
                                      onClick={handleEmailPasswordAction}
-                                     disabled={isEmailLoading || !email || !password}
+                                     disabled={isEmailLoading || !email || !password || (isSignUpMode && !confirmPassword)}
                                      className="px-6 w-full py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 shadow-lg transition-all font-black uppercase text-xs flex items-center justify-center gap-2 disabled:opacity-50"
                                     >
                                      {isEmailLoading ? (
@@ -910,7 +927,12 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                    
                                    <div className="text-center pb-2">
                                       <button
-                                         onClick={() => setIsSignUpMode(!isSignUpMode)}
+                                         onClick={() => {
+                                           setIsSignUpMode(!isSignUpMode);
+                                           setConfirmPassword('');
+                                           setPassword('');
+                                           setEmailError('');
+                                         }}
                                          className="text-xs text-orange-600 hover:text-orange-700 font-bold underline"
                                       >
                                         {isSignUpMode ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
@@ -928,12 +950,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                         onClick={async () => {
                                           try {
                                             const { authService } = await import('../services/convex');
-                                            // @ts-ignore
-                                            if (!email) {
-                                              setEmailError("Please enter your email in the field above first, then click Google to sign in instantly with that account!");
-                                              return;
-                                            }
-                                            await authService.auth.signInWithOAuth({ provider: 'google', email });
+                                            await authService.auth.signInWithOAuth({ provider: 'google', email: email || undefined });
                                           } catch (e: any) { setEmailError(e.message); }
                                         }}
                                         className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-bold text-xs text-slate-700 flex items-center justify-center gap-2"
@@ -946,12 +963,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                         onClick={async () => {
                                           try {
                                             const { authService } = await import('../services/convex');
-                                            // @ts-ignore
-                                            if (!email) {
-                                              setEmailError("Please enter your email in the field above first, then click Facebook to sign in instantly with that account!");
-                                              return;
-                                            }
-                                            await authService.auth.signInWithOAuth({ provider: 'facebook', email });
+                                            await authService.auth.signInWithOAuth({ provider: 'facebook', email: email || undefined });
                                           } catch (e: any) { setEmailError(e.message); }
                                         }}
                                         className="w-full px-4 py-2 bg-[#1877F2] hover:bg-[#1864D9] border border-transparent rounded-xl transition-all font-bold text-xs text-white flex items-center justify-center gap-2"

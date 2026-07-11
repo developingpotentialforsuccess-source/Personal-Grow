@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { AppData, BackupEntry, ModuleLocks } from '../types';
 import { 
   ShieldCheck, RefreshCw, Clock, Lock, Unlock, Download, Upload, Database, ExternalLink, Camera, Sparkles,
-  CalendarDays, CalendarRange, History, Cloud, Trash2, AlertTriangle, Check
+  CalendarDays, CalendarRange, History, Cloud, Trash2, AlertTriangle, Check, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { getCloudBackups, createCloudBackup, getFirebaseProjectId } from '../services/convex';
 import { format, differenceInDays } from 'date-fns';
@@ -47,6 +48,7 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
     error: null
   });
   const [checkingSync, setCheckingSync] = useState(false);
+  const [showSetupHelp, setShowSetupHelp] = useState(false);
 
   const checkSyncStatus = async () => {
     setCheckingSync(true);
@@ -491,47 +493,70 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
                         )}
                     </div>
 
-                    {/* Domain Authorization Help - ONLY show if not in AI Studio */}
-                    {!window.location.hostname.includes('aistudio.google.com') && !gdriveToken && (
-                        <div className="p-5 bg-amber-50 border-2 border-amber-200 rounded-2xl mx-4 md:mx-8 mb-4 space-y-3">
-                            <div className="flex items-center gap-2 text-amber-800 font-black text-[11px] uppercase tracking-wider">
-                                <AlertTriangle size={16} className="text-amber-600" />
-                                Action Required: Authorize Domain
-                            </div>
-                            <p className="text-[11px] text-amber-900 font-bold leading-relaxed">
-                                You are using a custom domain. To enable Google Drive sync, you MUST add this domain to your Firebase settings:
-                            </p>
-                            <div className="flex flex-col gap-3 p-4 bg-white/80 rounded-xl border border-amber-100">
-                                <div className="text-[10px] text-amber-800/70 font-black uppercase">Step 1: Copy this domain</div>
-                                <div className="flex items-center justify-between p-2 bg-amber-100/50 rounded-lg border border-amber-200 group">
-                                    <code className="text-xs font-mono font-black text-amber-900">{window.location.hostname}</code>
-                                    <button 
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(window.location.hostname);
-                                            alert("Domain copied!");
-                                        }}
-                                        className="px-3 py-1 bg-amber-600 text-white rounded-md text-[9px] font-black uppercase hover:bg-amber-700 transition-colors"
-                                    >
-                                        Copy
-                                    </button>
+                    {/* OAuth & Sync Configuration Help */}
+                    {!gdriveToken && (
+                        <div className="mx-4 md:mx-8 mb-4">
+                            <button 
+                                onClick={() => setShowSetupHelp(!showSetupHelp)}
+                                className="w-full flex items-center justify-between p-3 bg-amber-50 border border-amber-100 rounded-2xl text-[10px] font-black uppercase text-amber-800 hover:bg-amber-100/50 transition-all"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <AlertTriangle size={14} className="text-amber-600" />
+                                    Troubleshoot Google Drive (Required for Sync)
                                 </div>
-                                
-                                <div className="text-[10px] text-amber-800/70 font-black uppercase mt-1">Step 2: Open Firebase Console</div>
-                                <a 
-                                    href={`https://console.firebase.google.com/project/${process.env.VITE_FIREBASE_PROJECT_ID || 'gen-lang-client-0862414427'}/authentication/settings`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center justify-center gap-2 p-2 bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase hover:bg-amber-700 transition-all shadow-sm"
-                                >
-                                    Open Authorized Domains Settings
-                                    <ExternalLink size={12} />
-                                </a>
+                                {showSetupHelp ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </button>
 
-                                <div className="text-[10px] text-amber-800/70 font-black uppercase mt-1">Step 3: Add Domain</div>
-                                <p className="text-[10px] text-amber-700 font-medium">
-                                    In the page that opens, click <strong>"Add domain"</strong> and paste the domain you copied in Step 1.
-                                </p>
-                            </div>
+                            {showSetupHelp && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="mt-2 p-4 bg-white border-2 border-amber-200 rounded-2xl space-y-4 shadow-sm"
+                                >
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col gap-2">
+                                            <div className="text-[10px] text-amber-800 font-black uppercase">Step 1: Fix "Access Blocked" Error</div>
+                                            <p className="text-[10px] text-gray-600 leading-relaxed">
+                                                Your app is in "Testing" mode. You MUST add your email to the <strong>Test Users</strong> list.
+                                            </p>
+                                            <a 
+                                                href="https://console.cloud.google.com/auth/audience"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center justify-center gap-2 p-2 bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase hover:bg-amber-700 transition-all"
+                                            >
+                                                Add email to Test Users
+                                                <ExternalLink size={12} />
+                                            </a>
+                                        </div>
+
+                                        <div className="flex flex-col gap-2 pt-2 border-t border-amber-100">
+                                            <div className="text-[10px] text-amber-800 font-black uppercase">Step 2: Authorize Domain</div>
+                                            <div className="flex items-center justify-between p-2 bg-amber-50 rounded-lg border border-amber-100">
+                                                <code className="text-xs font-mono font-black text-amber-900">{window.location.hostname}</code>
+                                                <button 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(window.location.hostname);
+                                                        alert("Domain copied!");
+                                                    }}
+                                                    className="px-2 py-1 bg-amber-200 text-amber-800 rounded text-[8px] font-black uppercase hover:bg-amber-300"
+                                                >
+                                                    Copy
+                                                </button>
+                                            </div>
+                                            <a 
+                                                href={`https://console.firebase.google.com/project/${process.env.VITE_FIREBASE_PROJECT_ID || 'gen-lang-client-0862414427'}/authentication/settings`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center justify-center gap-2 p-2 bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase hover:bg-amber-700 transition-all"
+                                            >
+                                                Open Authorized Domains
+                                                <ExternalLink size={12} />
+                                            </a>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            )}
                         </div>
                     )}
 

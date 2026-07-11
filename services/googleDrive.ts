@@ -5,10 +5,12 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Initialize Firebase safely
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
+export { auth as firebaseAuth };
 
 const provider = new GoogleAuthProvider();
 // Request Google Drive file scope for specific app files
 provider.addScope('https://www.googleapis.com/auth/drive.file');
+provider.setCustomParameters({ prompt: 'select_account' });
 
 let isSigningIn = false;
 let cachedAccessToken: string | null = localStorage.getItem('gdrive_access_token');
@@ -62,11 +64,9 @@ export const googleDriveSignIn = async (): Promise<{ user: User; accessToken: st
 };
 
 export const googleDriveSignOut = async () => {
-  await signOut(auth);
   cachedAccessToken = null;
-  currentUser = null;
   localStorage.removeItem('gdrive_access_token');
-  authChangeListeners.forEach(cb => cb(null, null));
+  authChangeListeners.forEach(cb => cb(currentUser, null));
 };
 
 export const getGoogleDriveAccessToken = (): string | null => {

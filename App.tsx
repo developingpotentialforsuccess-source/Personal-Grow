@@ -821,18 +821,26 @@ const App: React.FC = () => {
           }
         }
 
-        const finalStr = JSON.stringify(newData);
-        previousDataSyncRef.current = finalStr;
-        lastScheduledDataStrRef.current = finalStr;
+        const cloudStr = JSON.stringify(newData);
+        if (cloudStr === previousDataSyncRef.current) {
+          isCloudLoadedRef.current = true;
+          setLoading(false);
+          return;
+        }
+
+        const cloudUpdateAt = newData.updatedAt || 0;
+        const localUpdateAt = currentDataRef.current?.updatedAt || 0;
+
+        // If cloud is newer or local is significantly older/empty, take cloud
+        if (cloudUpdateAt >= localUpdateAt || localUpdateAt === 0) {
+          previousDataSyncRef.current = cloudStr;
+          lastSyncedUpdatedAtRef.current = cloudUpdateAt;
+          setInternalData(newData);
+          setLastSyncedTime(Date.now());
+          storage.setItem("dps_data", cloudStr);
+        }
         
-        // CRITICAL: Ensure lastSyncedUpdatedAtRef is set to the cloud's timestamp
-        // to prevent this device from immediately trying to "overwrite" cloud with local.
-        lastSyncedUpdatedAtRef.current = newData.updatedAt || 0;
-        
-        setLastSyncedTime(Date.now());
         isCloudLoadedRef.current = true;
-        setInternalData(newData);
-        storage.setItem("dps_data", finalStr);
         setLoading(false);
       },
       (error) => {
