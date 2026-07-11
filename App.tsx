@@ -824,14 +824,19 @@ const App: React.FC = () => {
         const finalStr = JSON.stringify(newData);
         previousDataSyncRef.current = finalStr;
         lastScheduledDataStrRef.current = finalStr;
+        
+        // CRITICAL: Ensure lastSyncedUpdatedAtRef is set to the cloud's timestamp
+        // to prevent this device from immediately trying to "overwrite" cloud with local.
         lastSyncedUpdatedAtRef.current = newData.updatedAt || 0;
+        
         setLastSyncedTime(Date.now());
         isCloudLoadedRef.current = true;
         setInternalData(newData);
         storage.setItem("dps_data", finalStr);
         setLoading(false);
       },
-      () => {
+      (error) => {
+        console.error("Cloud subscription error:", error);
         clearTimeout(loadTimeout);
         isCloudLoadedRef.current = true;
         setLoading(false);

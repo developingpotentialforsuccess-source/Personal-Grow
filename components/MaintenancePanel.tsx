@@ -473,8 +473,8 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
                                         console.error("Google Drive Link Error:", err);
                                         let errorMsg = "Authorization failed. Ensure you accept all permissions.";
                                         
-                                        if (err.code === 'auth/unauthorized-domain') {
-                                            errorMsg = `DOMAIN NOT AUTHORIZED: Please add "${window.location.hostname}" to your Firebase Console (Authentication > Settings > Authorized Domains).`;
+                                        if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.includes('unauthorized domain'))) {
+                                            errorMsg = `DOMAIN NOT AUTHORIZED: You MUST add "${window.location.hostname}" to your Firebase Console (Authentication > Settings > Authorized Domains).`;
                                         } else if (err.code === 'auth/popup-blocked') {
                                             errorMsg = "Popup Blocked: Please allow popups for this site in your browser settings.";
                                         } else if (err.code === 'auth/popup-closed-by-user') {
@@ -493,14 +493,45 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
 
                     {/* Domain Authorization Help - ONLY show if not in AI Studio */}
                     {!window.location.hostname.includes('aistudio.google.com') && !gdriveToken && (
-                        <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl mx-4 md:mx-8 mb-4 space-y-2">
-                            <div className="flex items-center gap-2 text-blue-800 font-bold text-[10px] uppercase">
-                                <AlertTriangle size={14} className="text-blue-500" />
-                                Custom Domain Setup: {window.location.hostname}
+                        <div className="p-5 bg-amber-50 border-2 border-amber-200 rounded-2xl mx-4 md:mx-8 mb-4 space-y-3">
+                            <div className="flex items-center gap-2 text-amber-800 font-black text-[11px] uppercase tracking-wider">
+                                <AlertTriangle size={16} className="text-amber-600" />
+                                Action Required: Authorize Domain
                             </div>
-                            <p className="text-[10px] text-blue-700 font-medium leading-relaxed">
-                                If the Google login fails, you must add <strong>{window.location.hostname}</strong> to your <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized Domains</strong> list.
+                            <p className="text-[11px] text-amber-900 font-bold leading-relaxed">
+                                You are using a custom domain. To enable Google Drive sync, you MUST add this domain to your Firebase settings:
                             </p>
+                            <div className="flex flex-col gap-3 p-4 bg-white/80 rounded-xl border border-amber-100">
+                                <div className="text-[10px] text-amber-800/70 font-black uppercase">Step 1: Copy this domain</div>
+                                <div className="flex items-center justify-between p-2 bg-amber-100/50 rounded-lg border border-amber-200 group">
+                                    <code className="text-xs font-mono font-black text-amber-900">{window.location.hostname}</code>
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(window.location.hostname);
+                                            alert("Domain copied!");
+                                        }}
+                                        className="px-3 py-1 bg-amber-600 text-white rounded-md text-[9px] font-black uppercase hover:bg-amber-700 transition-colors"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                                
+                                <div className="text-[10px] text-amber-800/70 font-black uppercase mt-1">Step 2: Open Firebase Console</div>
+                                <a 
+                                    href={`https://console.firebase.google.com/project/${process.env.VITE_FIREBASE_PROJECT_ID || 'gen-lang-client-0862414427'}/authentication/settings`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center gap-2 p-2 bg-amber-600 text-white rounded-lg text-[10px] font-black uppercase hover:bg-amber-700 transition-all shadow-sm"
+                                >
+                                    Open Authorized Domains Settings
+                                    <ExternalLink size={12} />
+                                </a>
+
+                                <div className="text-[10px] text-amber-800/70 font-black uppercase mt-1">Step 3: Add Domain</div>
+                                <p className="text-[10px] text-amber-700 font-medium">
+                                    In the page that opens, click <strong>"Add domain"</strong> and paste the domain you copied in Step 1.
+                                </p>
+                            </div>
                         </div>
                     )}
 

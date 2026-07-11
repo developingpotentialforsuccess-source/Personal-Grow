@@ -220,7 +220,7 @@ export const authService = {
   }
 };
 
-export const subscribeToData = (userId: string, onUpdate: (data: any) => void, onError?: () => void) => {
+export const subscribeToData = (userId: string, onUpdate: (data: any) => void, onError?: (error: any) => void) => {
   if (!client) {
     // Falls back to local storage
     setTimeout(async () => {
@@ -238,91 +238,34 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
     return () => {};
   }
 
-  let mainDoc: any = null;
-  let students: any[] = [];
-  let topics: any[] = [];
-
-  const mergeAndEmit = () => {
-    if (!mainDoc) return;
-    const combined = { ...mainDoc };
-
-    // Only overwrite with granular data if it's actually populated
-    // This prevents empty granular collections from wiping out monolith data on new devices
-    if (students && students.length > 0) {
-      combined.students = [...students].sort((a, b) => {
-        return (a.name || '').localeCompare(b.name || '') || (a.id || '').localeCompare(b.id || '');
-      });
-    }
-
-    if (topics && topics.length > 0) {
-      const buildTopicTree = (flatList: any[]) => {
-        const map = new Map<string, any>();
-        const roots: any[] = [];
-        flatList.forEach(t => {
-          map.set(t.id, { ...t, children: t.children || [] });
-        });
-        flatList.forEach(t => {
-          const node = map.get(t.id);
-          if (t.parentId && map.has(t.parentId)) {
-            const parent = map.get(t.parentId);
-            if (parent && !parent.children.some((c: any) => c.id === t.id)) {
-              parent.children.push(node);
-            }
-          } else {
-            roots.push(node);
-          }
-        });
-        return roots;
-      };
-
-      const reconstructedTree = buildTopicTree(topics);
-      combined.dpssTopics = reconstructedTree.filter(t => t.category === 'dpss');
-      combined.selfLearningTopics = reconstructedTree.filter(t => t.category === 'selfLearning');
-    }
-
-    onUpdate(combined);
-  };
-
   const unsubData = client.onUpdate("dps:fetchDpsData" as any, { userId }, (res: any) => {
+    // res will be null if no data exists for this user in Convex yet
+    if (res === null) {
+      onUpdate(null);
+      return;
+    }
+
     if (res) {
       try {
-        // Support both field names for backward compatibility during migration
         const rawData = res.dataStr || res.data;
         if (rawData) {
-          mainDoc = JSON.parse(rawData);
-          mainDoc.updatedAt = res.updatedAt;
-          mainDoc.version = res.version;
+          const cloudData = JSON.parse(rawData);
+          // Preserve the cloud timestamp as source of truth for conflict resolution
+          cloudData.updatedAt = res.updatedAt || cloudData.updatedAt;
+          onUpdate(cloudData);
         } else {
-          mainDoc = { students: [], dpssTopics: [], selfLearningTopics: [] };
+          onUpdate(null);
         }
       } catch (e) {
-        console.error("Failed to parse monolith data:", e);
-        mainDoc = { students: [], dpssTopics: [], selfLearningTopics: [] };
+        console.error("Failed to parse cloud data:", e);
+        onUpdate(null); // Fallback to allow initial local sync
+        if (onError) onError(e);
       }
-    } else {
-      mainDoc = { students: [], dpssTopics: [], selfLearningTopics: [] };
     }
-    mergeAndEmit();
-  });
-
-  const unsubStudents = client.onUpdate("dps:fetchStudents" as any, { owner_id: userId }, (res: any) => {
-    if (Array.isArray(res)) {
-      students = res.map(item => ({ ...item.data, id: item.id }));
-    }
-    mergeAndEmit();
-  });
-
-  const unsubTopics = client.onUpdate("dps:fetchTopics" as any, { owner_id: userId }, (res: any) => {
-    if (Array.isArray(res)) {
-      topics = res.map(item => ({ ...item.data, id: item.id, content: item.content, title: item.title, parentId: item.parentId, category: item.category }));
-    }
-    mergeAndEmit();
   });
 
   return () => {
     unsubData();
-    unsubStudents();
-    unsubTopics();
   };
 };
 
