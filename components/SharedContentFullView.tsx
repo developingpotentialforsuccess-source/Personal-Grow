@@ -63,10 +63,10 @@ export const SharedContentFullView: React.FC<SharedContentFullViewProps> = ({ da
       </div>
 
       <div className="w-full max-w-4xl mx-auto p-4 md:p-8 flex-1 mt-6 animate-fade-in">
-        {data.type === 'self-learning' && (
+        {(data.type === 'self-learning' || data.type === 'note-taking' || data.type === 'dpss') && (
            <div className="mb-12">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400 rounded-lg text-[10px] font-black uppercase tracking-wider mb-6">
-                 <FileText size={12} /> Self-Learning Topic
+                 <FileText size={12} /> {data.type === 'note-taking' ? 'Note-Taking Topic' : 'Self-Learning Topic'}
               </div>
               {renderSelfLearningNode(data.payload)}
            </div>

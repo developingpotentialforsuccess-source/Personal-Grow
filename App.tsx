@@ -273,6 +273,17 @@ const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlTab = urlParams.get("tab");
+      if (urlTab) {
+        const matched = Object.values(Tab).find(
+          (t) => t.toLowerCase() === urlTab.toLowerCase()
+        );
+        if (matched) return matched;
+        if (urlTab.toLowerCase() === 'note-taking' || urlTab.toLowerCase() === 'dpss') return Tab.DPSS;
+        if (urlTab.toLowerCase() === 'self-learning') return Tab.SelfLearning;
+      }
+
       const saved = localStorage.getItem('dps_active_tab');
       if (saved && Object.values(Tab).includes(saved as Tab)) return saved as Tab;
     } catch {}
@@ -281,6 +292,16 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('dps_active_tab', activeTab);
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.get("share") && !urlParams.get("sharedData")) {
+        urlParams.set("tab", activeTab);
+        const newUrl = window.location.pathname + '?' + urlParams.toString();
+        window.history.replaceState(null, "", newUrl);
+      }
+    } catch (e) {
+      console.error("Error updating URL with active tab", e);
+    }
   }, [activeTab]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
