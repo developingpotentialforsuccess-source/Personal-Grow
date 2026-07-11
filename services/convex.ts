@@ -2,8 +2,17 @@ import { ConvexClient } from "convex/browser";
 import { storage as localIndexedDB } from './storage';
 import { v4 as uuidv4 } from 'uuid';
 
+declare global {
+  interface ImportMeta {
+    readonly env: {
+      readonly VITE_CONVEX_URL?: string;
+      [key: string]: any;
+    };
+  }
+}
+
 // Try to load CONVEX_URL from environment variables
-const CONVEX_URL = ((import.meta as any).env?.VITE_CONVEX_URL || (process as any).env?.CONVEX_URL) || "https://dummy-convex-url.convex.cloud";
+const CONVEX_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_CONVEX_URL) || (typeof process !== 'undefined' && process.env?.CONVEX_URL) || "https://dummy-convex-url.convex.cloud";
 
 export const isConvexConfigured = () => {
   return CONVEX_URL !== "https://dummy-convex-url.convex.cloud" && CONVEX_URL.trim() !== "";
@@ -62,10 +71,12 @@ export const authService = {
       if (stored) {
         try {
           const user = JSON.parse(stored);
+          const email = user.email;
+          const uid = email || user.uid || "local-user";
           const session = {
             user: {
-              id: user.uid || "local-user",
-              email: user.email,
+              id: uid,
+              email: email,
               user_metadata: { full_name: user.name || "User" }
             }
           };
@@ -103,12 +114,14 @@ export const authService = {
       if (stored) {
         try {
           const user = JSON.parse(stored);
+          const email = user.email;
+          const uid = email || user.uid || "local-user";
           return {
             data: {
               session: {
                 user: {
-                  id: user.uid || "local-user",
-                  email: user.email,
+                  id: uid,
+                  email: email,
                   user_metadata: { full_name: user.name || "User" }
                 }
               }
@@ -121,7 +134,7 @@ export const authService = {
     signUp: async ({ email, password, options }: any) => {
       try {
         const name = options?.data?.full_name || email.split('@')[0] || "User";
-        const uid = uuidv4();
+        const uid = email; // Always use email as stable uid for sync consistency across devices
 
         if (client) {
           // Register in Convex DB
@@ -144,7 +157,7 @@ export const authService = {
     signInWithPassword: async ({ email, password }: any) => {
       try {
         let name = email.split('@')[0] || "User";
-        let uid = uuidv4();
+        const uid = email; // Always use email as stable uid for sync consistency across devices
         let role = "Admin";
 
         if (client) {
@@ -157,7 +170,6 @@ export const authService = {
             return { data: null, error: new Error("Invalid password.") };
           }
           name = convexUser.name;
-          uid = convexUser._id;
           role = (convexUser.role as any) || "Admin";
         }
 
@@ -170,8 +182,8 @@ export const authService = {
       }
     },
     signInWithOAuth: async ({ provider, email: customEmail }: { provider: string; email?: string }) => {
-      const uid = uuidv4();
       const email = customEmail || `${provider}_user@example.com`;
+      const uid = email; // Always use email as stable uid for sync consistency across devices
       const name = customEmail ? (customEmail.split('@')[0] || "User") : `${provider.toUpperCase()} User`;
       const newUser = { name, role: "Admin", uid, email };
       localStorage.setItem("dps_user", JSON.stringify(newUser));
@@ -179,8 +191,8 @@ export const authService = {
       return { data: { session: { user: { id: uid, email, user_metadata: { full_name: name } } } }, error: null };
     },
     signInWithPhoneNumber: async (phone: string, appVerifier: any) => {
-      const uid = uuidv4();
       const email = `${phone}@example.com`;
+      const uid = email; // Always use phone-email as stable uid for sync consistency across devices
       const name = `Phone User`;
       const newUser = { name, role: "Admin", uid, email };
       localStorage.setItem("dps_user", JSON.stringify(newUser));

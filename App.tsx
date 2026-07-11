@@ -720,8 +720,28 @@ const App: React.FC = () => {
            return;
         }
 
-        const incomingStr = JSON.stringify(newData);
+        // Offline-First Safety Merge:
+        // If this is the first load, and the incoming cloud data is empty (no students and no topics),
+        // but we already have non-empty local data in this browser, we DO NOT want to overwrite and wipe out
+        // our local data. Instead, we keep our local data and let the auto-sync hook upload it to the cloud.
+        const isCloudEmpty = (!newData.dpssTopics || newData.dpssTopics.length === 0) && 
+                             (!newData.selfLearningTopics || newData.selfLearningTopics.length === 0) && 
+                             (!newData.students || newData.students.length === 0);
+
         const currentData = currentDataRef.current;
+        const isLocalNotEmpty = currentData && (
+          (currentData.dpssTopics && currentData.dpssTopics.length > 0) ||
+          (currentData.selfLearningTopics && currentData.selfLearningTopics.length > 0) ||
+          (currentData.students && currentData.students.length > 0)
+        );
+
+        if (isFirstLoad && isCloudEmpty && isLocalNotEmpty) {
+          isCloudLoadedRef.current = true;
+          setLoading(false);
+          return;
+        }
+
+        const incomingStr = JSON.stringify(newData);
         const currentDataStr = JSON.stringify(currentData);
         
         // 1. If incoming data is exactly what we already have locally, ignore
