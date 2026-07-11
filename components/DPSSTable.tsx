@@ -2242,6 +2242,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     } else {
       onUpdate({ ...data, dpssTopics: updated });
     }
+    setSelectedTopicId(newTopic.id);
     if (parentId) {
       setExpandedTopics(prev => ({ ...prev, [parentId]: true }));
     }

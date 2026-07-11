@@ -32,7 +32,7 @@ import {
   Bookmark
 } from 'lucide-react';
 import { Tab, UserRole, AppSettings, ViewMode, StudentCategory, AppData, CurrentUser } from '../types';
-import { getSyncStatus } from '../services/convex';
+import { getSyncStatus, isConvexConfigured } from '../services/convex';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -200,12 +200,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="overflow-hidden flex-1 flex flex-col justify-center">
                   <p className="text-[11px] font-black text-slate-900 dark:text-slate-200 truncate tracking-tight leading-tight">{currentUser?.name}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-blue-500 animate-bounce' : isOnline && currentUser?.uid ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-blue-500 animate-bounce' : isOnline && currentUser?.uid && isConvexConfigured() ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                     <span 
-                      className={`text-[8px] font-black leading-none uppercase ${isSyncing ? 'text-blue-600' : isOnline && currentUser?.uid ? 'text-emerald-600' : 'text-amber-600/90'}`} 
-                      title={isSyncing ? "Syncing..." : isOnline && currentUser?.uid ? "Online" : "Local / Offline"}
+                      className={`text-[8px] font-black leading-none uppercase ${isSyncing ? 'text-blue-600' : isOnline && currentUser?.uid && isConvexConfigured() ? 'text-emerald-600' : 'text-amber-600/90'}`} 
+                      title={isSyncing ? "Syncing..." : isOnline && currentUser?.uid && isConvexConfigured() ? "Online" : "Local / Offline"}
                     >
-                      {isSyncing ? 'Sync' : isOnline && currentUser?.uid ? 'Online' : 'Local'}
+                      {isSyncing ? 'Sync' : isOnline && currentUser?.uid && isConvexConfigured() ? 'Online' : 'Local'}
                     </span>
                   </div>
                 </div>

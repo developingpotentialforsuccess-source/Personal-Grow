@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AppSettings, CurrentUser, AppData } from '../types';
 import { X, Save, Settings2, Type, Baseline, Paintbrush, Check, Cloud, LogIn, LogOut, Image as ImageIcon, Trash2, FileText, Coins, Table, Download, Upload, RefreshCw, ExternalLink } from 'lucide-react';
 import { PAPER_STYLES } from '../src/styles/paperStyles';
-import { getFirebaseProjectId } from '../services/convex';
+import { getFirebaseProjectId, isConvexConfigured } from '../services/convex';
 
 declare global {
   interface Window {
@@ -784,7 +784,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                 </div>
 
                 <div className="bg-white/50 border border-white/60 p-4 rounded-2xl space-y-4 shadow-sm flex flex-col items-center text-center">
-                    {currentUser?.uid ? (
+                    {currentUser?.uid && isConvexConfigured() ? (
                         <>
                           <>
                             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
@@ -811,6 +811,27 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                             </div>
                           </>
                         </>
+                    ) : currentUser?.uid ? (
+                        <>
+                          <>
+                            <div className="w-12 h-12 bg-amber-100 text-amber-650 rounded-full flex items-center justify-center mb-2">
+                              <Cloud size={24} strokeWidth={2} />
+                            </div>
+                            <div className="w-full">
+                              <p className="text-sm font-black text-slate-800 mb-1">Local Profile</p>
+                              {currentUser?.email && <p className="text-[10px] font-bold text-orange-600 mb-1 break-all tracking-tight">{currentUser.email}</p>}
+                              <p className="text-xs text-slate-500 leading-relaxed mb-4 text-center px-4">
+                                Cloud sync is disabled because <code className="font-bold text-slate-750 bg-slate-100 px-1 py-0.5 rounded">VITE_CONVEX_URL</code> is not configured. Your data is stored locally in this browser.
+                              </p>
+                              <button 
+                                onClick={onLogout}
+                                className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg hover:bg-slate-50 hover:text-red-500 transition-colors font-bold text-xs flex items-center gap-2 mx-auto"
+                              >
+                                <LogOut size={14} /> Sign Out
+                              </button>
+                            </div>
+                          </>
+                        </>
                     ) : (
                         <>
                           <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-2">
@@ -819,7 +840,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                           <div>
                             <p className="text-sm font-black text-slate-800 mb-1">Local Mode</p>
                             <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                              Your data is only stored in this browser. Please sign in to sync.
+                              Your data is only stored in this browser. {isConvexConfigured() ? "Please sign in to sync." : "To enable cloud sync, please configure VITE_CONVEX_URL in your hosting environment."}
                               <br />
                               <span className="text-[10px] text-orange-600 font-bold italic block mt-1">Note: We recently switched to Convex Cloud. Please Sign Up again if you haven't yet on this new version.</span>
                             </p>

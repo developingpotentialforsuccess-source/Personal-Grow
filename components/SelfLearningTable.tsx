@@ -1981,6 +1981,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
     } else {
       onUpdate({ ...data, selfLearningTopics: updated });
     }
+    setSelectedTopicId(newTopic.id);
     if (parentId) {
       setExpandedTopics(prev => ({ ...prev, [parentId]: true }));
     }

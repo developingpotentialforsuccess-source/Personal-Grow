@@ -36,11 +36,12 @@ import {
   saveData,
   logOut,
   authService,
+  isConvexConfigured,
 } from "./services/convex";
 import { initGoogleDriveAuth, getGoogleDriveAccessToken, autoBackupIfDue } from "./services/googleDrive";
 import { decodeFromURLSafeBase64 } from "./services/sharingEncoder";
 import { storage } from "./services/storage";
-import { Menu, MessageSquare, X, GraduationCap, Cloud, Check } from "lucide-react";
+import { Menu, MessageSquare, X, GraduationCap, Cloud, Check, HardDrive, Database, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { v4 as uuidv4 } from "uuid";
 import { addMonths, format } from "date-fns";
@@ -1476,17 +1477,31 @@ const App: React.FC = () => {
               </span>
             </motion.div>
           ) : lastSyncedTime ? (
-            <motion.div
-              key="saved"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-full backdrop-blur-md"
-            >
-              <Check size={10} className="text-slate-400 dark:text-slate-500" />
-              <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
-                Cloud Synced
-              </span>
-            </motion.div>
+            isConvexConfigured() ? (
+              <motion.div
+                key="saved-cloud"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-full backdrop-blur-md"
+              >
+                <Check size={10} className="text-slate-400 dark:text-slate-500" />
+                <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
+                  Cloud Synced
+                </span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="saved-local"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-amber-50/75 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-900/30 rounded-full backdrop-blur-md"
+              >
+                <HardDrive size={10} className="text-amber-500 dark:text-amber-400" />
+                <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400 uppercase tracking-tighter">
+                  Saved Locally (No Cloud)
+                </span>
+              </motion.div>
+            )
           ) : null}
         </AnimatePresence>
       </div>
@@ -1501,17 +1516,35 @@ const App: React.FC = () => {
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex items-center gap-3 px-4 py-3 bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-2xl font-sans select-none pointer-events-none"
           >
-            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/25 text-emerald-400">
-              <Cloud size={14} className="animate-bounce" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black tracking-wider uppercase leading-none text-slate-200">
-                Cloud Sync Success
-              </span>
-              <span className="text-[9px] font-medium leading-normal text-slate-400 mt-1">
-                Data saved successfully to Convex
-              </span>
-            </div>
+            {isConvexConfigured() ? (
+              <>
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/25 text-emerald-400">
+                  <Cloud size={14} className="animate-bounce" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black tracking-wider uppercase leading-none text-slate-200">
+                    Cloud Sync Success
+                  </span>
+                  <span className="text-[9px] font-medium leading-normal text-slate-400 mt-1">
+                    Data saved successfully to Convex
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/25 text-amber-400">
+                  <HardDrive size={14} className="animate-bounce" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black tracking-wider uppercase leading-none text-slate-200">
+                    Local Save Success
+                  </span>
+                  <span className="text-[9px] font-medium leading-normal text-slate-400 mt-1">
+                    Data saved securely in your browser
+                  </span>
+                </div>
+              </>
+            )}
             <div className="flex items-center justify-center w-4.5 h-4.5 rounded-full bg-emerald-500 text-slate-950 ml-2 shadow-inner">
               <Check size={10} strokeWidth={4} />
             </div>
