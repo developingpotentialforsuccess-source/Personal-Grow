@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Zap, Undo, Redo, Plus, Trash2, Calendar, AlignLeft, AlignCenter, AlignRight, Highlighter, Type, Settings2, MousePointer2, Minus, Layout, Square, Quote, FileUp, FileDown, Loader2, Wand2, Menu, ChevronLeft, FileText, ChevronDown, ChevronRight, Table, Grid3X3, LayoutGrid, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Palette, Italic, Underline, Strikethrough, Indent, Outdent, List, ListOrdered, CheckSquare, MoreHorizontal, Download, Maximize2, Minimize2, Search, Archive, Folder, Star, Share2, Pencil, Lock, Unlock, ArrowRightLeft, GraduationCap, Copy, GripVertical, Ruler, Sparkles, Layers, MessageSquare, Check, Bookmark, Activity, BookOpen, User } from 'lucide-react';
+import { Zap, Undo, Redo, Plus, Trash2, Calendar, AlignLeft, AlignCenter, AlignRight, Highlighter, Type, Settings2, MousePointer2, Minus, Layout, Square, Quote, FileUp, FileDown, Loader2, Wand2, Menu, ChevronLeft, FileText, ChevronDown, ChevronRight, Table, Grid3X3, LayoutGrid, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Palette, Italic, Underline, Strikethrough, Indent, Outdent, List, ListOrdered, CheckSquare, MoreHorizontal, Download, Maximize2, Minimize2, Search, Archive, Folder, Star, Share2, Pencil, Lock, Unlock, ArrowRightLeft, GraduationCap, Copy, GripVertical, Ruler, Sparkles, Layers, MessageSquare, Check, Bookmark, Activity, BookOpen, User, Hash } from 'lucide-react';
 import { AppData, DPSSTopic } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { callNeuralEngine } from '../services/neuralEngine';
@@ -411,6 +411,9 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   const [sidebarFilter, setSidebarFilter] = useState<string>('files');
   const [sortOrder, setSortOrder] = useState<'manual' | 'alpha-asc' | 'alpha-desc' | 'newest' | 'oldest'>('manual');
   const [subTopicSortOrder, setSubTopicSortOrder] = useState<'manual' | 'alpha-asc' | 'alpha-desc' | 'newest' | 'oldest'>('manual');
+  const [showTopicNumbers, setShowTopicNumbers] = useState<boolean>(() => {
+    return localStorage.getItem('dpss_show_topic_numbers') !== 'false';
+  });
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [editingTopicTitle, setEditingTopicTitle] = useState<string>('');
   const [activeTableCell, setActiveTableCell] = useState<HTMLTableCellElement | null>(null);
@@ -2207,7 +2210,19 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
   };
 
   const addTopic = (parentId?: string) => {
-    const newTopic: DPSSTopic = { id: uuidv4(), title: 'New Topic', content: '', alignment: 'left', createdAt: Date.now() };
+    const isPriorityFilter = sidebarFilter !== 'files' && sidebarFilter !== 'stars' && sidebarFilter !== 'smart';
+    const isStarsFilter = sidebarFilter === 'stars';
+    const isSmartFilter = sidebarFilter === 'smart';
+
+    const newTopic: DPSSTopic = { 
+      id: uuidv4(), 
+      title: isSmartFilter ? '🎯 New Topic' : 'New Topic', 
+      content: '', 
+      alignment: 'left', 
+      createdAt: Date.now(),
+      priority: isPriorityFilter ? sidebarFilter : undefined,
+      isArchived: isStarsFilter ? true : undefined
+    };
     const updateTopics = (items: DPSSTopic[]): DPSSTopic[] => {
       if (!parentId) return [...items, newTopic];
       return items.map(item => {
@@ -2693,69 +2708,80 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     });
   };
 
-  /* Re-implemented handleFileUpload */
+  /* Re-implemented handleFileUpload with Google Drive support and 20MB size limit */
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !activeTopic) return;
     const file = files[0];
+
+    // Enforce strict 20 MB size limit
+    if (file.size > 20 * 1024 * 1024) {
+      alert("This file exceeds the 20 MB limit. Please select a smaller file (picture, video, or document).");
+      e.target.value = '';
+      return;
+    }
     
     setIsUploading(true);
     try {
-      const { uploadFile } = await import('../services/convex');
-      const storedUser = localStorage.getItem('dps_user');
-      let userId = 'anon';
-      if (storedUser) {
-        try {
-          const u = JSON.parse(storedUser);
-          userId = u.uid || 'anon';
-        } catch (e) {}
-      }
+      const { getGoogleDriveAccessToken, uploadAttachmentToDrive } = await import('../services/googleDrive');
+      const accessToken = getGoogleDriveAccessToken();
 
-      const publicUrl = await uploadFile(userId, file);
-      
       let html = '';
-      if (!publicUrl) {
-          // If Supabase upload fails (e.g. no bucket), fall back to Data URL with warning
-          const reader = new FileReader();
-          reader.onload = (event) => {
-              const dataUrl = event.target?.result as string;
-              if (file.size > 500 * 1024 && !confirm("This file is too large for local-only storage and will NOT sync across devices. Continue?")) {
-                  setIsUploading(false);
-                  return;
-              }
-              
-              if (file.type.startsWith('image/')) {
-                  html = `<div style="margin: 15px 0; text-align: center;"><img src="${dataUrl}" alt="uploaded image" style="max-width: 100%; max-height: 400px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);" /></div><p><br></p>`;
-              } else if (file.type.startsWith('video/')) {
-                  html = `<div contenteditable="false" style="margin: 15px 0; text-align: center;"><video controls src="${dataUrl}" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"></video></div><p><br></p>`;
-              } else if (file.type.startsWith('audio/')) {
-                  html = `<div contenteditable="false" style="margin: 15px 0; text-align: center; background: rgba(255,255,255,0.4); padding: 15px; border-radius: 50px;"><audio controls src="${dataUrl}" style="width: 100%; outline: none;"></audio></div><p><br></p>`;
-              } else {
-                  html = `<div contenteditable="false" style="margin: 15px 0; padding: 12px 16px; background: rgba(255, 237, 213, 0.8); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; display: inline-block;"><a href="${dataUrl}" download="${file.name}" target="_blank" rel="noopener noreferrer" style="color: #f97316; font-weight: bold; text-decoration: none;">📎 Open/Download: ${file.name}</a></div><p><br></p>`;
-              }
-              insertContent(html);
-              setIsUploading(false);
-          };
-          reader.readAsDataURL(file);
+
+      if (accessToken) {
+        // High performance Google Drive upload! Perfect sync, zero database bloat.
+        const driveResult = await uploadAttachmentToDrive(file, accessToken);
+        if (driveResult) {
+          const publicUrl = driveResult.url;
+          if (file.type.startsWith('image/')) {
+            html = `<div style="margin: 15px 0; text-align: center;"><img src="${publicUrl}" alt="uploaded image" style="max-width: 100%; max-height: 400px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);" /></div><p><br></p>`;
+          } else if (file.type.startsWith('video/')) {
+            html = `<div contenteditable="false" style="margin: 15px 0; text-align: center;"><video controls src="${publicUrl}" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"></video></div><p><br></p>`;
+          } else if (file.type.startsWith('audio/')) {
+            html = `<div contenteditable="false" style="margin: 15px 0; text-align: center; background: rgba(255,255,255,0.4); padding: 15px; border-radius: 50px;"><audio controls src="${publicUrl}" style="width: 100%; outline: none;"></audio></div><p><br></p>`;
+          } else {
+            html = `<div contenteditable="false" style="margin: 15px 0; padding: 12px 16px; background: rgba(255, 237, 213, 0.8); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; display: inline-block;"><a href="${publicUrl}" download="${file.name}" target="_blank" rel="noopener noreferrer" style="color: #f97316; font-weight: bold; text-decoration: none;">📎 Open/Download: ${file.name}</a></div><p><br></p>`;
+          }
+          insertContent(html);
+          setIsUploading(false);
+          e.target.value = '';
           return;
+        } else {
+          console.warn("Google Drive upload failed, falling back to local encoding");
+        }
       }
 
-      // Success cloud upload
-      if (file.type.startsWith('image/')) {
-          html = `<div style="margin: 15px 0; text-align: center;"><img src="${publicUrl}" alt="uploaded image" style="max-width: 100%; max-height: 400px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);" /></div><p><br></p>`;
-      } else if (file.type.startsWith('video/')) {
-          html = `<div contenteditable="false" style="margin: 15px 0; text-align: center;"><video controls src="${publicUrl}" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"></video></div><p><br></p>`;
-      } else if (file.type.startsWith('audio/')) {
-          html = `<div contenteditable="false" style="margin: 15px 0; text-align: center; background: rgba(255,255,255,0.4); padding: 15px; border-radius: 50px;"><audio controls src="${publicUrl}" style="width: 100%; outline: none;"></audio></div><p><br></p>`;
-      } else {
-          html = `<div contenteditable="false" style="margin: 15px 0; padding: 12px 16px; background: rgba(255, 237, 213, 0.8); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; display: inline-block;"><a href="${publicUrl}" download="${file.name}" target="_blank" rel="noopener noreferrer" style="color: #f97316; font-weight: bold; text-decoration: none;">📎 Open/Download: ${file.name}</a></div><p><br></p>`;
-      }
-      insertContent(html);
+      // Local fallback with size warnings
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        if (file.size > 500 * 1024) {
+          const message = `This file is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Files larger than 500 KB stored in local memory can cause slow sync or get stuck. \n\nFor a flawless experience with no size limits up to 20 MB, please connect your Google Drive in the Maintenance Panel! \n\nDo you want to continue using local storage anyway?`;
+          if (!confirm(message)) {
+            setIsUploading(false);
+            e.target.value = '';
+            return;
+          }
+        }
+        
+        if (file.type.startsWith('image/')) {
+          html = `<div style="margin: 15px 0; text-align: center;"><img src="${dataUrl}" alt="uploaded image" style="max-width: 100%; max-height: 400px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);" /></div><p><br></p>`;
+        } else if (file.type.startsWith('video/')) {
+          html = `<div contenteditable="false" style="margin: 15px 0; text-align: center;"><video controls src="${dataUrl}" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"></video></div><p><br></p>`;
+        } else if (file.type.startsWith('audio/')) {
+          html = `<div contenteditable="false" style="margin: 15px 0; text-align: center; background: rgba(255,255,255,0.4); padding: 15px; border-radius: 50px;"><audio controls src="${dataUrl}" style="width: 100%; outline: none;"></audio></div><p><br></p>`;
+        } else {
+          html = `<div contenteditable="false" style="margin: 15px 0; padding: 12px 16px; background: rgba(255, 237, 213, 0.8); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; display: inline-block;"><a href="${dataUrl}" download="${file.name}" target="_blank" rel="noopener noreferrer" style="color: #f97316; font-weight: bold; text-decoration: none;">📎 Open/Download: ${file.name}</a></div><p><br></p>`;
+        }
+        insertContent(html);
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
     } catch (err) {
       console.error("Upload error:", err);
       alert("Upload failed. Check your internet connection.");
-    } finally {
       setIsUploading(false);
+    } finally {
       e.target.value = '';
     }
   };
@@ -4786,7 +4812,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     return colors[hash % colors.length];
   };
 
-  const renderTopic = (topic: DPSSTopic, depth = 0): React.ReactNode => {
+  const renderTopic = (topic: DPSSTopic, depth = 0, numberPrefix = ''): React.ReactNode => {
     if (!topic || topic.deletedAt) return null;
     const isSelected = selectedTopicId === topic.id;
     const style = getTopicStyles(topic.id, isSelected);
@@ -4888,6 +4914,11 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                     className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm" 
                     style={{ backgroundColor: data.settings?.priorities?.find(p => p.id === topic.priority)?.color || '#64748b' }}
                   />
+                )}
+                {showTopicNumbers && numberPrefix && (
+                  <span className="font-mono text-[10px] text-slate-500 bg-slate-100/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded select-none shrink-0 border border-slate-200/40 dark:border-slate-700/40 font-medium">
+                    {numberPrefix}
+                  </span>
                 )}
                 {topic.title}
                 {topic.isLocked && <Lock size={10} className="text-slate-400 shrink-0" />}
@@ -5073,7 +5104,9 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
         
         {hasChildren && isExpanded && (
           <div className="border-l border-dashed border-slate-200 dark:border-slate-800 ml-2.5 pl-1.5">
-            {topic.children!.map(child => renderTopic(child, depth + 1))}
+            {topic.children!.map((child, childIdx) => 
+              renderTopic(child, depth + 1, numberPrefix ? `${numberPrefix}.${childIdx + 1}` : `${childIdx + 1}`)
+            )}
           </div>
         )}
       </div>
@@ -5136,7 +5169,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
         <div className="relative flex-1 min-h-0 flex flex-col">
           <div 
             ref={sidebarScrollRef}
-            className="flex-1 overflow-y-auto pl-8 md:pl-10 pr-2 space-y-3 max-[767px]:landscape:space-y-2.5 hide-native-scrollbar flex flex-col min-h-0 overscroll-contain pb-24 touch-pan-y"
+            className="flex-1 overflow-y-auto pl-8 md:pl-10 pr-2 space-y-3 max-[767px]:landscape:space-y-2.5 visible-sidebar-scrollbar flex flex-col min-h-0 overscroll-contain pb-24 touch-pan-y"
           >
           <div className="flex flex-col gap-2.5 shrink-0">
             {/* Equal sized Action Buttons Grid */}
@@ -5221,6 +5254,24 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                   )}
                 </div>
               </button>
+
+              <button
+                onClick={() => {
+                  setShowTopicNumbers(prev => {
+                    const next = !prev;
+                    localStorage.setItem('dpss_show_topic_numbers', String(next));
+                    return next;
+                  });
+                }}
+                className={`shrink-0 p-2.5 rounded-xl transition-all border ${
+                  showTopicNumbers 
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600 shadow-sm' 
+                    : 'bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/60'
+                }`}
+                title="Toggle Topic Numbering"
+              >
+                <Hash size={14} />
+              </button>
             </div>
 
             {/* Priority / Stars Segmented Tab Control */}
@@ -5279,7 +5330,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
               onDrop={(e) => handleDrop(e, null)}
             >
               {filteredTopics.length > 0 ? (
-                filteredTopics.map(t => renderTopic(t))
+                filteredTopics.map((t, idx) => renderTopic(t, 0, `${idx + 1}`))
               ) : (
                 <div className="text-center py-6 text-xs text-slate-400 select-none">
                   {searchTerm ? 'No matching note topics found' : 'No active note topics yet'}
@@ -5288,8 +5339,19 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
             </div>
           ) : sidebarFilter === 'stars' ? (
             <div className="space-y-1.5 pl-0.5">
+              <div className="text-[9px] font-black uppercase tracking-widest pl-1 mb-2 flex items-center justify-between gap-1 text-amber-500">
+                <span className="flex items-center gap-1">
+                  <Star size={11} fill="currentColor" /> Stars Filter
+                </span>
+                <button 
+                  onClick={() => setSidebarFilter('files')}
+                  className="text-[9px] font-bold text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors uppercase tracking-normal flex items-center gap-0.5 border border-slate-200/50 dark:border-slate-800 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-900 shadow-sm"
+                >
+                  Hide Filter
+                </button>
+              </div>
               {filteredArchivedTopics.length > 0 ? (
-                filteredArchivedTopics.map(t => renderTopic(t))
+                filteredArchivedTopics.map((t, idx) => renderTopic(t, 0, `${idx + 1}`))
               ) : (
                 <div className="text-center py-6 text-xs text-slate-400 select-none">
                   {searchTerm ? 'No matching favorite topics' : 'Stars is empty'}
@@ -5299,16 +5361,59 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
           ) : (
             <div className="space-y-1 min-h-[50px] outline-none rounded-xl transition-all">
                {(() => {
+                 if (sidebarFilter === 'smart') {
+                   const smartTopics = filterTopicsBySearch(activeTopics.filter(t => 
+                     t.title.trim().startsWith('🎯') || 
+                     t.title.trim().startsWith('⚡') || 
+                     t.title.trim().startsWith('🧠') || 
+                     t.title.trim().startsWith('💡') || 
+                     t.title.trim().startsWith('📚') ||
+                     t.title.trim().startsWith('🔬') ||
+                     t.title.trim().startsWith('🎓') ||
+                     t.title.trim().startsWith('🌟') ||
+                     t.title.trim().startsWith('🔥')
+                   ), searchTerm);
+                   
+                   return (
+                     <>
+                      <div className="text-[9px] font-black uppercase tracking-widest pl-1 mb-2 flex items-center justify-between gap-1 text-indigo-500">
+                        <span className="flex items-center gap-1">
+                          <Wand2 size={11} className="animate-pulse" /> Smart Filter
+                        </span>
+                        <button 
+                          onClick={() => setSidebarFilter('files')}
+                          className="text-[9px] font-bold text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors uppercase tracking-normal flex items-center gap-0.5 border border-slate-200/50 dark:border-slate-800 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-900 shadow-sm"
+                        >
+                          Hide Filter
+                        </button>
+                      </div>
+                      {smartTopics.length > 0 ? (
+                        sortTopicsRecursive(smartTopics).map((t, idx) => renderTopic(t, 0, `${idx + 1}`))
+                      ) : (
+                        <div className="text-center py-6 text-xs text-slate-400 select-none">
+                          {searchTerm ? 'No matching smart topics' : 'No smart topics yet'}
+                        </div>
+                      )}
+                     </>
+                   );
+                 }
+
                  const currentPriority = data.settings?.priorities?.find(p => p.id === sidebarFilter);
                  const priorityTopics = filterTopicsBySearch(activeTopics.filter(t => t.priority === sidebarFilter), searchTerm);
                  
                  return (
                    <>
-                    <div className="text-[9px] font-black uppercase tracking-widest pl-1 mb-2 flex items-center gap-1" style={{ color: currentPriority?.color || '#64748b' }}>
+                    <div className="text-[9px] font-black uppercase tracking-widest pl-1 mb-2 flex items-center justify-between gap-1" style={{ color: currentPriority?.color || '#64748b' }}>
                       <span>{currentPriority?.label || 'Priority'} Filter</span>
+                      <button 
+                        onClick={() => setSidebarFilter('files')}
+                        className="text-[9px] font-bold text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors uppercase tracking-normal flex items-center gap-0.5 border border-slate-200/50 dark:border-slate-800 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-900 shadow-sm"
+                      >
+                        Hide Filter
+                      </button>
                     </div>
                     {priorityTopics.length > 0 ? (
-                      sortTopicsRecursive(priorityTopics).map(t => renderTopic(t))
+                      sortTopicsRecursive(priorityTopics).map((t, idx) => renderTopic(t, 0, `${idx + 1}`))
                     ) : (
                       <div className="text-center py-6 text-xs text-slate-400 select-none">
                         {searchTerm ? `No matching ${currentPriority?.label || ''} topics` : `No ${currentPriority?.label || ''} topics`}
@@ -6604,6 +6709,29 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                         display: none !important;
                         width: 0 !important;
                         height: 0 !important;
+                      }
+
+                      .visible-sidebar-scrollbar {
+                        scrollbar-width: auto !important;
+                        scrollbar-color: rgba(249, 115, 22, 0.45) rgba(0, 0, 0, 0.02) !important;
+                        overflow-y: scroll !important;
+                        -webkit-overflow-scrolling: touch !important;
+                      }
+                      .visible-sidebar-scrollbar::-webkit-scrollbar {
+                        display: block !important;
+                        width: 6px !important;
+                        height: 6px !important;
+                      }
+                      .visible-sidebar-scrollbar::-webkit-scrollbar-track {
+                        background: rgba(0, 0, 0, 0.02) !important;
+                        border-radius: 9999px !important;
+                      }
+                      .visible-sidebar-scrollbar::-webkit-scrollbar-thumb {
+                        background: rgba(249, 115, 22, 0.45) !important;
+                        border-radius: 9999px !important;
+                      }
+                      .visible-sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+                        background: rgba(249, 115, 22, 0.65) !important;
                       }
 
                       .custom-scrollbar {

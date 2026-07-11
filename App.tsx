@@ -37,6 +37,7 @@ import {
   logOut,
   authService,
 } from "./services/convex";
+import { initGoogleDriveAuth, getGoogleDriveAccessToken, autoBackupIfDue } from "./services/googleDrive";
 import { decodeFromURLSafeBase64 } from "./services/sharingEncoder";
 import { storage } from "./services/storage";
 import { Menu, MessageSquare, X, GraduationCap, Cloud, Check } from "lucide-react";
@@ -376,6 +377,17 @@ const App: React.FC = () => {
           
           setShowSyncToast(true);
           setTimeout(() => setShowSyncToast(false), 2000);
+
+          // Google Drive Daily Auto-Backup on successful cloud sync
+          const gdriveToken = getGoogleDriveAccessToken();
+          if (gdriveToken) {
+            const interval = Number(localStorage.getItem('gdrive_backup_interval_days') || '1');
+            if (interval > 0) {
+              autoBackupIfDue(dataToSave, gdriveToken, interval).catch(err => {
+                console.error("Auto Google Drive Backup failed:", err);
+              });
+            }
+          }
         } catch (err) {
           console.error("Auto Sync Error:", err);
         } finally {
@@ -386,6 +398,21 @@ const App: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [data?.updatedAt, currentUser?.uid, loading, isSyncing]);
+
+  // Google Drive Auth status & On-Load Auto-Backup initialization
+  useEffect(() => {
+    const unsubscribe = initGoogleDriveAuth((user, token) => {
+      if (user && token && data && !loading) {
+        const interval = Number(localStorage.getItem('gdrive_backup_interval_days') || '1');
+        if (interval > 0) {
+          autoBackupIfDue(data, token, interval).catch(err => {
+            console.error("On-load Auto Google Drive Backup failed:", err);
+          });
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [data, loading]);
 
   // No auto-seeding of named tasks per user request for a blank/clean start
   useEffect(() => {

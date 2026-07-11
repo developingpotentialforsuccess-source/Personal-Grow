@@ -30,8 +30,8 @@ export const checkConvexConnection = async () => {
   return typeof window !== 'undefined' && window.navigator.onLine;
 };
 
-// Architecture constants
-const MAX_CONVEX_SIZE = 400000;
+// Architecture constants (20 MB limit as requested by user)
+const MAX_CONVEX_SIZE = 20 * 1024 * 1024;
 
 export const getFirebaseProjectId = () => "Convex";
 export const getFirebaseAuthProvidersUrl = () => "https://dashboard.convex.dev";
