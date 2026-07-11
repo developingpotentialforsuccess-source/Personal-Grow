@@ -246,33 +246,39 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
     if (!mainDoc) return;
     const combined = { ...mainDoc };
 
-    combined.students = [...students].sort((a, b) => {
-      return (a.name || '').localeCompare(b.name || '') || (a.id || '').localeCompare(b.id || '');
-    });
-
-    const buildTopicTree = (flatList: any[]) => {
-      const map = new Map<string, any>();
-      const roots: any[] = [];
-      flatList.forEach(t => {
-        map.set(t.id, { ...t, children: t.children || [] });
+    // Only overwrite with granular data if it's actually populated
+    // This prevents empty granular collections from wiping out monolith data on new devices
+    if (students && students.length > 0) {
+      combined.students = [...students].sort((a, b) => {
+        return (a.name || '').localeCompare(b.name || '') || (a.id || '').localeCompare(b.id || '');
       });
-      flatList.forEach(t => {
-        const node = map.get(t.id);
-        if (t.parentId && map.has(t.parentId)) {
-          const parent = map.get(t.parentId);
-          if (parent && !parent.children.some((c: any) => c.id === t.id)) {
-            parent.children.push(node);
+    }
+
+    if (topics && topics.length > 0) {
+      const buildTopicTree = (flatList: any[]) => {
+        const map = new Map<string, any>();
+        const roots: any[] = [];
+        flatList.forEach(t => {
+          map.set(t.id, { ...t, children: t.children || [] });
+        });
+        flatList.forEach(t => {
+          const node = map.get(t.id);
+          if (t.parentId && map.has(t.parentId)) {
+            const parent = map.get(t.parentId);
+            if (parent && !parent.children.some((c: any) => c.id === t.id)) {
+              parent.children.push(node);
+            }
+          } else {
+            roots.push(node);
           }
-        } else {
-          roots.push(node);
-        }
-      });
-      return roots;
-    };
+        });
+        return roots;
+      };
 
-    const reconstructedTree = buildTopicTree(topics);
-    combined.dpssTopics = reconstructedTree.filter(t => t.category === 'dpss');
-    combined.selfLearningTopics = reconstructedTree.filter(t => t.category === 'selfLearning');
+      const reconstructedTree = buildTopicTree(topics);
+      combined.dpssTopics = reconstructedTree.filter(t => t.category === 'dpss');
+      combined.selfLearningTopics = reconstructedTree.filter(t => t.category === 'selfLearning');
+    }
 
     onUpdate(combined);
   };
@@ -280,10 +286,17 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
   const unsubData = client.onUpdate("dps:fetchDpsData" as any, { userId }, (res: any) => {
     if (res) {
       try {
-        mainDoc = JSON.parse(res.dataStr);
-        mainDoc.updatedAt = res.updatedAt;
-        mainDoc.version = res.version;
+        // Support both field names for backward compatibility during migration
+        const rawData = res.dataStr || res.data;
+        if (rawData) {
+          mainDoc = JSON.parse(rawData);
+          mainDoc.updatedAt = res.updatedAt;
+          mainDoc.version = res.version;
+        } else {
+          mainDoc = { students: [], dpssTopics: [], selfLearningTopics: [] };
+        }
       } catch (e) {
+        console.error("Failed to parse monolith data:", e);
         mainDoc = { students: [], dpssTopics: [], selfLearningTopics: [] };
       }
     } else {
@@ -321,7 +334,8 @@ export const fetchData = async (userId: string) => {
   try {
     const res = await (client as any).query("dps:fetchDpsData", { userId });
     if (res) {
-      return JSON.parse(res.dataStr);
+      const rawData = res.dataStr || res.data;
+      return rawData ? JSON.parse(rawData) : null;
     }
     return null;
   } catch (error) {

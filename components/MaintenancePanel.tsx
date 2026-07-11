@@ -469,8 +469,19 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
                                     try {
                                         await googleDriveSignIn();
                                         alert("Google Drive linked successfully!");
-                                    } catch (err) {
-                                        alert("Authorization failed. Ensure you accept all permissions.");
+                                    } catch (err: any) {
+                                        console.error("Google Drive Link Error:", err);
+                                        let errorMsg = "Authorization failed. Ensure you accept all permissions.";
+                                        
+                                        if (err.code === 'auth/unauthorized-domain') {
+                                            errorMsg = `DOMAIN NOT AUTHORIZED: Please add "${window.location.hostname}" to your Firebase Console (Authentication > Settings > Authorized Domains).`;
+                                        } else if (err.code === 'auth/popup-blocked') {
+                                            errorMsg = "Popup Blocked: Please allow popups for this site in your browser settings.";
+                                        } else if (err.code === 'auth/popup-closed-by-user') {
+                                            errorMsg = "Sign-in cancelled. Please complete the Google login flow.";
+                                        }
+                                        
+                                        alert(errorMsg);
                                     }
                                 }}
                                 className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#4285F4] text-white rounded-2xl text-[10px] md:text-xs font-black uppercase shadow-lg shadow-[#4285F4]/20 hover:bg-[#357ae8] transition-all"
@@ -479,6 +490,19 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
                             </button>
                         )}
                     </div>
+
+                    {/* Domain Authorization Help - ONLY show if not in AI Studio */}
+                    {!window.location.hostname.includes('aistudio.google.com') && !gdriveToken && (
+                        <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl mx-4 md:mx-8 mb-4 space-y-2">
+                            <div className="flex items-center gap-2 text-blue-800 font-bold text-[10px] uppercase">
+                                <AlertTriangle size={14} className="text-blue-500" />
+                                Custom Domain Setup: {window.location.hostname}
+                            </div>
+                            <p className="text-[10px] text-blue-700 font-medium leading-relaxed">
+                                If the Google login fails, you must add <strong>{window.location.hostname}</strong> to your <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized Domains</strong> list.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 md:space-y-8 custom-scrollbar">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
