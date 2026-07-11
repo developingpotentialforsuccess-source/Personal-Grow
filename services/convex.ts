@@ -169,10 +169,10 @@ export const authService = {
         return { data: null, error: e };
       }
     },
-    signInWithOAuth: async ({ provider }: { provider: string }) => {
+    signInWithOAuth: async ({ provider, email: customEmail }: { provider: string; email?: string }) => {
       const uid = uuidv4();
-      const email = `${provider}_user@example.com`;
-      const name = `${provider.toUpperCase()} User`;
+      const email = customEmail || `${provider}_user@example.com`;
+      const name = customEmail ? (customEmail.split('@')[0] || "User") : `${provider.toUpperCase()} User`;
       const newUser = { name, role: "Admin", uid, email };
       localStorage.setItem("dps_user", JSON.stringify(newUser));
       triggerAuthChange({ user: { id: uid, email, user_metadata: { full_name: name } } });

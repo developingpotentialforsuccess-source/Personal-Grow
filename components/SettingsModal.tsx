@@ -908,7 +908,11 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                           try {
                                             const { authService } = await import('../services/convex');
                                             // @ts-ignore
-                                            await authService.auth.signInWithOAuth({ provider: 'google' });
+                                            if (!email) {
+                                              setEmailError("Please enter your email in the field above first, then click Google to sign in instantly with that account!");
+                                              return;
+                                            }
+                                            await authService.auth.signInWithOAuth({ provider: 'google', email });
                                           } catch (e: any) { setEmailError(e.message); }
                                         }}
                                         className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all font-bold text-xs text-slate-700 flex items-center justify-center gap-2"
@@ -922,7 +926,11 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                           try {
                                             const { authService } = await import('../services/convex');
                                             // @ts-ignore
-                                            await authService.auth.signInWithOAuth({ provider: 'facebook' });
+                                            if (!email) {
+                                              setEmailError("Please enter your email in the field above first, then click Facebook to sign in instantly with that account!");
+                                              return;
+                                            }
+                                            await authService.auth.signInWithOAuth({ provider: 'facebook', email });
                                           } catch (e: any) { setEmailError(e.message); }
                                         }}
                                         className="w-full px-4 py-2 bg-[#1877F2] hover:bg-[#1864D9] border border-transparent rounded-xl transition-all font-bold text-xs text-white flex items-center justify-center gap-2"
