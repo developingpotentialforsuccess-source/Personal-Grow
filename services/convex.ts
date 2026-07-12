@@ -13,9 +13,16 @@ declare global {
 }
 
 // Try to load CONVEX_URL from environment variables
-const CONVEX_URL = "https://dapper-robin-600.convex.cloud";
+let CONVEX_URL = ((typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_CONVEX_URL) || (typeof process !== "undefined" && process.env?.CONVEX_URL) || "https://dapper-robin-600.convex.cloud").replace(/\/$/, "");
+
+if (CONVEX_URL === "https://valuable-fish-943.convex.cloud") {
+  CONVEX_URL = "https://dapper-robin-600.convex.cloud";
+}
 
 
+
+
+// trigger github sync
 export const isConvexConfigured = () => {
   return CONVEX_URL !== "https://dummy-convex-url.convex.cloud" && CONVEX_URL.trim() !== "";
 };

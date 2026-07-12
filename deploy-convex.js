@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+// Trigger github sync
 
 const deployKey = process.env.CONVEX_DEPLOY_KEY;
 
