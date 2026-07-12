@@ -39,30 +39,22 @@ export const checkFirebaseConnection = async () => {
   if (!client) return false;
   
   try {
-    // Run a quick query to verify Convex is reachable
-    // We use a longer timeout and don't fail hard on timeouts if we were previously connected
-    const queryPromise = (client as any).query("dps:fetchDpsData", { userId: "ping" });
-    const result = await Promise.race([
-      queryPromise,
-      new Promise((resolve) => setTimeout(() => resolve("timeout"), 10000))
-    ]);
-
-    if (result !== "timeout") {
-      lastSyncStatus = true;
-      return true;
-    }
-    
-    // If it's just a timeout, trust the last known status
-    return lastSyncStatus;
+    // We try the query, but we don't let it block the UI with a failure unless it's fatal.
+    // Convex handles its own reconnection logic internally.
+    await (client as any).query("dps:fetchDpsData", { userId: "ping" });
+    lastSyncStatus = true;
+    return true;
   } catch (e: any) {
-    // Only a "Function not found" error confirms a deployment failure
-    if (e.message?.includes("Function not found")) {
+    const msg = e.message?.toLowerCase() || "";
+    // Only return false if we have a definitive "this doesn't exist" or "not found" error.
+    if (msg.includes("function not found") || msg.includes("404") || msg.includes("not found")) {
       lastSyncStatus = false;
       return false;
     }
     
-    // For other errors (like transient network issues), keep the current status
-    return lastSyncStatus;
+    // For network timeouts or transient errors, we return true if we are online.
+    // This prevents the "Offline" warning from appearing when Convex is just reconnecting.
+    return window.navigator.onLine;
   }
 };
 
