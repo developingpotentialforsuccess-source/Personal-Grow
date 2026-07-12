@@ -1,3 +1,4 @@
+import LZString from 'lz-string';
 import { anyApi } from "convex/server";
 import { ConvexClient } from "convex/browser";
 import { storage as localIndexedDB } from './storage';
@@ -100,7 +101,9 @@ import {
   GoogleAuthProvider, 
   signInWithPopup, 
   signOut as firebaseSignOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  signInWithPhoneNumber,
+  RecaptchaVerifier
 } from 'firebase/auth';
 import { firebaseAuth } from './googleDrive';
 
@@ -114,12 +117,13 @@ export const authService = {
             user: {
               id: user.uid,
               email: user.email,
-              user_metadata: { full_name: user.displayName || user.email?.split('@')[0] || "User" }
+              phoneNumber: user.phoneNumber,
+              user_metadata: { full_name: user.displayName || user.phoneNumber || user.email?.split('@')[0] || "User" }
             }
           };
           
           const role = "Admin";
-          const newUser = { name: session.user.user_metadata.full_name, role, uid: user.uid, email: user.email };
+          const newUser = { name: session.user.user_metadata.full_name, role, uid: user.uid, email: user.email, phoneNumber: user.phoneNumber };
           localStorage.setItem("dps_user", JSON.stringify(newUser));
 
           try {
@@ -152,7 +156,8 @@ export const authService = {
               user: {
                 id: user.uid,
                 email: user.email,
-                user_metadata: { full_name: user.displayName || user.email?.split('@')[0] || "User" }
+                phoneNumber: user.phoneNumber,
+                user_metadata: { full_name: user.displayName || user.phoneNumber || user.email?.split('@')[0] || "User" }
               }
             }
           }
@@ -212,8 +217,16 @@ export const authService = {
         return { data: null, error: e };
       }
     },
-    signInWithPhoneNumber: async (phone: string, appVerifier: any) => {
-      return { data: { confirm: () => {} }, error: new Error("Phone auth not implemented") };
+    signInWithPhoneNumber: async (phone: string, containerId: string) => {
+      try {
+        const verifier = new RecaptchaVerifier(firebaseAuth, containerId, {
+          size: 'invisible'
+        });
+        const confirmationResult = await signInWithPhoneNumber(firebaseAuth, phone, verifier);
+        return { data: confirmationResult, error: null };
+      } catch (e: any) {
+        return { data: null, error: e };
+      }
     },
     signOut: async () => {
       localStorage.removeItem("dps_user");
@@ -253,7 +266,7 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
   // Use the standard onUpdate method for ConvexClient
   console.log(`[Convex] Subscribing to data for user: ${userId}`);
   
-  const unsubData = (client as any).onUpdate(anyApi.dps.fetchDpsData, { userId }, (res: any) => {
+  const unsubData = (client as any).onUpdate(anyApi.dps.fetchDpsData, { userId }, async (res: any) => {
     console.log("[Convex] Received cloud update:", res ? "Data found" : "No data");
     
     // res will be null if no data exists for this user in Convex yet
@@ -266,10 +279,25 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
       try {
         const rawData = res.dataStr || res.data;
         if (rawData) {
-          const cloudData = JSON.parse(rawData);
-          // Preserve the cloud timestamp as source of truth for conflict resolution
+          
+          let cloudData;
+          const parsedRaw = JSON.parse(rawData);
+          if (parsedRaw && parsedRaw.isChunked) {
+             console.log(`[Convex] Fetching ${parsedRaw.totalChunks} chunks...`);
+             const chunks = await (client as any).query(anyApi.dps.fetchDpsChunks, { userId, totalChunks: parsedRaw.totalChunks });
+             const fullStr = chunks.join('');
+             const decompressed = LZString.decompressFromBase64(fullStr);
+             if (decompressed) {
+                cloudData = JSON.parse(decompressed);
+             } else {
+                throw new Error("Failed to decompress chunks");
+             }
+          } else {
+             cloudData = parsedRaw;
+          }
           cloudData.updatedAt = res.updatedAt || cloudData.updatedAt;
           onUpdate(cloudData);
+
         } else {
           onUpdate(null);
         }
@@ -314,9 +342,45 @@ export const saveData = async (userId: string, dataState: any, instant: boolean 
   }
 
   try {
-    const dataStr = JSON.stringify(dataState);
+    
+    const jsonStr = JSON.stringify(dataState);
     const updatedAt = dataState.updatedAt || Date.now();
     const version = dataState.version || 1;
+    
+    const compressed = LZString.compressToBase64(jsonStr);
+    const CHUNK_SIZE = 800000;
+    
+    if (compressed.length > CHUNK_SIZE) {
+      console.log(`[Convex] Data is large (${compressed.length} bytes), chunking...`);
+      const chunks = [];
+      for (let i = 0; i < compressed.length; i += CHUNK_SIZE) {
+        chunks.push(compressed.substring(i, i + CHUNK_SIZE));
+      }
+      for (let i = 0; i < chunks.length; i++) {
+        await (client as any).mutation(anyApi.dps.saveDpsData, {
+          userId: userId + "_chunk_" + i,
+          dataStr: chunks[i],
+          updatedAt,
+          version
+        });
+      }
+      // Save metadata
+      const dataStr = JSON.stringify({ isChunked: true, totalChunks: chunks.length });
+      await (client as any).mutation(anyApi.dps.saveDpsData, {
+        userId,
+        dataStr,
+        updatedAt,
+        version
+      });
+      console.log("[Convex] Save chunked successful.");
+      lastSyncStatus = true;
+      return;
+    }
+    
+    // Else, normally stringify or keep compressed? 
+    // Wait, let's just always compress if we can? 
+    // Actually, to remain backward compatible, if it's small enough, just stringify.
+    const dataStr = jsonStr;
 
     console.log(`[Convex] Saving data monolith... (${dataStr.length} bytes)`);
 
@@ -346,17 +410,44 @@ export const processSyncQueue = async () => {
 
   const syncPromises = queue.map(async (item) => {
     try {
-      const dataStr = JSON.stringify(item.data);
-      const updatedAt = item.timestamp;
-      const version = item.data.version || 1;
-
+      
+    const jsonStr = JSON.stringify(item.data);
+    const compressed = LZString.compressToBase64(jsonStr);
+    const CHUNK_SIZE = 800000;
+    const updatedAt = item.timestamp;
+    const version = item.data.version || 1;
+    
+    if (compressed.length > CHUNK_SIZE) {
+      const chunks = [];
+      for (let i = 0; i < compressed.length; i += CHUNK_SIZE) {
+        chunks.push(compressed.substring(i, i + CHUNK_SIZE));
+      }
+      for (let i = 0; i < chunks.length; i++) {
+        await (client as any).mutation(anyApi.dps.saveDpsData, {
+          userId: item.userId + "_chunk_" + i,
+          dataStr: chunks[i],
+          updatedAt,
+          version
+        });
+      }
+      const dataStr = JSON.stringify({ isChunked: true, totalChunks: chunks.length });
       await (client as any).mutation(anyApi.dps.saveDpsData, {
         userId: item.userId,
         dataStr,
         updatedAt,
         version
       });
-      idsToRemove.push(item.id);
+    } else {
+      const dataStr = jsonStr;
+      await (client as any).mutation(anyApi.dps.saveDpsData, {
+        userId: item.userId,
+        dataStr,
+        updatedAt,
+        version
+      });
+    }
+    idsToRemove.push(item.id);
+
     } catch (e) {
       console.error("Error processing sync queue item:", e);
     }

@@ -74,6 +74,26 @@ export const saveDpsData = mutation({
   },
 });
 
+
+export const fetchDpsChunks = query({
+  args: { userId: v.string(), totalChunks: v.number() },
+  handler: async (ctx, args) => {
+    const chunks = [];
+    for (let i = 0; i < args.totalChunks; i++) {
+      const doc = await ctx.db
+        .query("dps_data")
+        .withIndex("by_userId", (q) => q.eq("userId", args.userId + "_chunk_" + i))
+        .first();
+      if (doc) {
+        chunks.push(doc.dataStr);
+      } else {
+        chunks.push("");
+      }
+    }
+    return chunks;
+  }
+});
+
 export const fetchStudents = query({
   args: { owner_id: v.string() },
   handler: async (ctx, args) => {

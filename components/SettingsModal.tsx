@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AppSettings, CurrentUser, AppData } from '../types';
-import { X, Save, Settings2, Type, Baseline, Paintbrush, Check, Cloud, LogIn, LogOut, Image as ImageIcon, Trash2, FileText, Coins, Table, Download, Upload, RefreshCw, ExternalLink } from 'lucide-react';
+import { X, Save, Settings2, Type, Baseline, Paintbrush, Check, Cloud, LogIn, LogOut, Image as ImageIcon, Trash2, FileText, Coins, Table, Download, Upload, RefreshCw, ExternalLink, MessageSquare } from 'lucide-react';
 import { PAPER_STYLES } from '../src/styles/paperStyles';
 import { getFirebaseProjectId, isConvexConfigured, getConvexUrl } from '../services/convex';
 
@@ -200,6 +200,12 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
   const [emailError, setEmailError] = useState('');
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
+
+  const [authMode, setAuthMode] = useState<'email' | 'phone'>('email');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const [isPhoneLoading, setIsPhoneLoading] = useState(false);
 
   const [syncStatus, setSyncStatus] = useState<{ configured: boolean; connected: boolean; error: string | null }>({
     configured: false,
@@ -749,6 +755,47 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
     }
   };
 
+  const handleSendOtp = async () => {
+    setEmailError('');
+    if (!phone || phone.length < 10) {
+      setEmailError("Please enter a valid phone number with country code (e.g. +1234567890)");
+      return;
+    }
+    setIsPhoneLoading(true);
+    try {
+      const { authService: authS } = await import('../services/convex');
+      const { data, error } = await authS.auth.signInWithPhoneNumber(phone, 'recaptcha-container');
+      if (error) throw error;
+      setConfirmationResult(data);
+    } catch (error: any) {
+      console.error(error);
+      setEmailError(error.message || "Failed to send verification code. Make sure Phone Auth is enabled in Firebase Console.");
+    } finally {
+      setIsPhoneLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setEmailError('');
+    if (!otp || otp.length < 6) {
+      setEmailError("Please enter the 6-digit verification code.");
+      return;
+    }
+    setIsPhoneLoading(true);
+    try {
+      const result = await confirmationResult.confirm(otp);
+      if (onPhoneLogin) {
+        onPhoneLogin(result.user);
+      }
+      onClose();
+    } catch (error: any) {
+      console.error(error);
+      setEmailError(error.message || "Invalid verification code.");
+    } finally {
+      setIsPhoneLoading(false);
+    }
+  };
+
   const handleSave = () => {
     onUpdate({ ...settings, ...localSettings });
     onClose();
@@ -901,55 +948,145 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                               <br />
                               <span className="text-[10px] text-orange-600 font-bold italic block mt-1">Note: We recently switched to Convex Cloud. Please Sign Up again if you haven't yet on this new version.</span>
                             </p>
-                            {emailError && (
-                              <div className="mb-4 bg-red-50 text-red-650 border border-red-200 p-4 rounded-xl text-xs font-semibold text-left leading-relaxed shadow-sm">
-                                <div className="font-black flex items-center gap-1.5 text-red-700 mb-1">
-                                  <span>⚠️ Auth Error:</span>
-                                </div>
-                                <div className="text-[11.5px] font-bold text-slate-800">{emailError}</div>
-                              </div>
-                            )}
+                             {emailError && (
+                               <div className="mb-4 bg-red-50 text-red-650 border border-red-200 p-4 rounded-xl text-xs font-semibold text-left leading-relaxed shadow-sm">
+                                 <div className="font-black flex items-center gap-1.5 text-red-700 mb-1">
+                                   <span>⚠️ Auth Error:</span>
+                                 </div>
+                                 <div className="text-[11.5px] font-bold text-slate-800">{emailError}</div>
+                                 {emailError.includes("Phone Auth") && (
+                                   <a 
+                                     href={`https://console.firebase.google.com/project/${getFirebaseProjectId()}/authentication/providers`} 
+                                     target="_blank" 
+                                     rel="noopener noreferrer" 
+                                     className="text-[10px] text-orange-600 underline mt-2 block font-black" 
+                                   > 
+                                     Enable Phone Auth in Firebase Console → 
+                                   </a> 
+                                 )}
+                               </div>
+                             )}
+
+                             <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+                               <button 
+                                 onClick={() => setAuthMode('email')} 
+                                 className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${authMode === 'email' ? 'bg-white shadow-sm text-orange-600' : 'text-slate-500 hover:text-slate-700'}`} 
+                               > 
+                                 Email 
+                               </button> 
+                               <button 
+                                 onClick={() => setAuthMode('phone')} 
+                                 className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${authMode === 'phone' ? 'bg-white shadow-sm text-orange-600' : 'text-slate-500 hover:text-slate-700'}`} 
+                               > 
+                                 Phone 
+                               </button> 
+                             </div>
+
                              <div className="space-y-3 mb-4">
-                                   <div id="recaptcha-container"></div>
-                                   <input 
-                                     type="email"
-                                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400"
-                                     placeholder="Email"
-                                     value={email}
-                                     onChange={(e) => setEmail(e.target.value)}
-                                     disabled={isEmailLoading}
-                                   />
-                                   <input 
-                                     type="password"
-                                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400"
-                                     placeholder="Password"
-                                     value={password}
-                                     onChange={(e) => setPassword(e.target.value)}
-                                     disabled={isEmailLoading}
-                                   />
-                                   {isSignUpMode && (
-                                     <input 
-                                       type="password"
-                                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400"
-                                       placeholder="Confirm Password"
-                                       value={confirmPassword}
-                                       onChange={(e) => setConfirmPassword(e.target.value)}
-                                       disabled={isEmailLoading}
-                                     />
+                                    <div id="recaptcha-container"></div>
+                                   
+                                   {authMode === 'email' ? (
+                                     <>
+                                       <input 
+                                         type="email"
+                                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400"
+                                         placeholder="Email"
+                                         value={email}
+                                         onChange={(e) => setEmail(e.target.value)}
+                                         disabled={isEmailLoading}
+                                       />
+                                       <input 
+                                         type="password"
+                                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400"
+                                         placeholder="Password"
+                                         value={password}
+                                         onChange={(e) => setPassword(e.target.value)}
+                                         disabled={isEmailLoading}
+                                       />
+                                       {isSignUpMode && (
+                                         <input 
+                                           type="password"
+                                           className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400"
+                                           placeholder="Confirm Password"
+                                           value={confirmPassword}
+                                           onChange={(e) => setConfirmPassword(e.target.value)}
+                                           disabled={isEmailLoading}
+                                         />
+                                       )}
+                                       <button 
+                                         onClick={handleEmailPasswordAction}
+                                         disabled={isEmailLoading || !email || !password || (isSignUpMode && !confirmPassword)}
+                                         className="px-6 w-full py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 shadow-lg transition-all font-black uppercase text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                         {isEmailLoading ? (
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                         ) : (
+                                            <LogIn size={16} />
+                                         )}
+                                         {isSignUpMode ? 'Sign Up' : 'Sign In'} with Email
+                                       </button>
+                                     </>
+                                   ) : (
+                                     <>
+                                       {!confirmationResult ? (
+                                         <>
+                                           <input 
+                                             type="tel"
+                                             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400 font-mono"
+                                             placeholder="+1234567890"
+                                             value={phone}
+                                             onChange={(e) => setPhone(e.target.value)}
+                                             disabled={isPhoneLoading}
+                                           />
+                                           <p className="text-[10px] text-slate-500 font-medium italic">Include country code (e.g. +1 for USA, +66 for Thailand)</p>
+                                           <button 
+                                             onClick={handleSendOtp}
+                                             disabled={isPhoneLoading || !phone}
+                                             className="px-6 w-full py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 shadow-lg transition-all font-black uppercase text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                                            >
+                                             {isPhoneLoading ? (
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                             ) : (
+                                                <MessageSquare size={16} />
+                                             )}
+                                             Send Verification Code
+                                           </button>
+                                         </>
+                                       ) : (
+                                         <>
+                                           <input 
+                                             type="text"
+                                             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-slate-400 text-center tracking-[0.5em] font-black"
+                                             placeholder="123456"
+                                             maxLength={6}
+                                             value={otp}
+                                             onChange={(e) => setOtp(e.target.value)}
+                                             disabled={isPhoneLoading}
+                                           />
+                                           <button 
+                                             onClick={handleVerifyOtp}
+                                             disabled={isPhoneLoading || otp.length < 6}
+                                             className="px-6 w-full py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 shadow-lg transition-all font-black uppercase text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                                            >
+                                             {isPhoneLoading ? (
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                             ) : (
+                                                <Check size={16} />
+                                             )}
+                                             Verify & Sign In
+                                           </button>
+                                           <button 
+                                             onClick={() => setConfirmationResult(null)}
+                                             className="text-[10px] text-slate-400 hover:text-slate-600 font-bold block w-full text-center"
+                                           >
+                                             Change Phone Number
+                                           </button>
+                                         </>
+                                       )}
+                                     </>
                                    )}
-                                   <button 
-                                     onClick={handleEmailPasswordAction}
-                                     disabled={isEmailLoading || !email || !password || (isSignUpMode && !confirmPassword)}
-                                     className="px-6 w-full py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 shadow-lg transition-all font-black uppercase text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                                    >
-                                     {isEmailLoading ? (
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                     ) : (
-                                        <LogIn size={16} />
-                                     )}
-                                     {isSignUpMode ? 'Sign Up' : 'Sign In'} with Email
-                                   </button>
-                                   {!isSignUpMode && (
+                                   
+                                   {authMode === 'email' && !isSignUpMode && (
                                      <button
                                        onClick={async () => {
                                          if (!email) {
