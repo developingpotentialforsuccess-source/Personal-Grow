@@ -277,21 +277,40 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
 
     if (res) {
       try {
-        const rawData = res.dataStr || res.data;
+        let rawData = res.dataStr || res.data;
+        
+        // Handle Storage URL if present
+        if (res.storageUrl) {
+          console.log("[Convex] Fetching large data from storage...");
+          const response = await fetch(res.storageUrl);
+          if (response.ok) {
+            rawData = await response.text();
+          } else {
+            throw new Error("Failed to fetch data from storage");
+          }
+        }
+
         if (rawData) {
-          
           let cloudData;
           const parsedRaw = JSON.parse(rawData);
+          
           if (parsedRaw && parsedRaw.isChunked) {
-             console.log(`[Convex] Fetching ${parsedRaw.totalChunks} chunks...`);
+             console.log(`[Convex] Fetching ${parsedRaw.totalChunks} chunks (Legacy Support)...`);
              const chunks = await (client as any).query(anyApi.dps.fetchDpsChunks, { userId, totalChunks: parsedRaw.totalChunks });
              const fullStr = chunks.join('');
              const decompressed = LZString.decompressFromBase64(fullStr);
              if (decompressed) {
                 cloudData = JSON.parse(decompressed);
              } else {
-                throw new Error("Failed to decompress chunks");
+                throw new Error("Failed to decompress legacy chunks");
              }
+          } else if (parsedRaw && parsedRaw.isCompressed) {
+            const decompressed = LZString.decompressFromBase64(parsedRaw.payload);
+            if (decompressed) {
+              cloudData = JSON.parse(decompressed);
+            } else {
+              throw new Error("Failed to decompress data");
+            }
           } else {
              cloudData = parsedRaw;
           }
@@ -320,8 +339,23 @@ export const fetchData = async (userId: string) => {
   try {
     const res = await (client as any).query(anyApi.dps.fetchDpsData, { userId });
     if (res) {
-      const rawData = res.dataStr || res.data;
-      return rawData ? JSON.parse(rawData) : null;
+      let rawData = res.dataStr || res.data;
+      
+      if (res.storageUrl) {
+        const response = await fetch(res.storageUrl);
+        if (response.ok) {
+          rawData = await response.text();
+        }
+      }
+
+      if (!rawData) return null;
+
+      const parsed = JSON.parse(rawData);
+      if (parsed && parsed.isCompressed) {
+        const decompressed = LZString.decompressFromBase64(parsed.payload);
+        return decompressed ? JSON.parse(decompressed) : null;
+      }
+      return parsed;
     }
     return null;
   } catch (error) {
@@ -342,51 +376,51 @@ export const saveData = async (userId: string, dataState: any, instant: boolean 
   }
 
   try {
-    
     const jsonStr = JSON.stringify(dataState);
     const updatedAt = dataState.updatedAt || Date.now();
     const version = dataState.version || 1;
     
     const compressed = LZString.compressToBase64(jsonStr);
-    const CHUNK_SIZE = 800000;
+    const payload = JSON.stringify({ isCompressed: true, payload: compressed });
     
-    if (compressed.length > CHUNK_SIZE) {
-      console.log(`[Convex] Data is large (${compressed.length} bytes), chunking...`);
-      const chunks = [];
-      for (let i = 0; i < compressed.length; i += CHUNK_SIZE) {
-        chunks.push(compressed.substring(i, i + CHUNK_SIZE));
-      }
-      for (let i = 0; i < chunks.length; i++) {
-        await (client as any).mutation(anyApi.dps.saveDpsData, {
-          userId: userId + "_chunk_" + i,
-          dataStr: chunks[i],
-          updatedAt,
-          version
-        });
-      }
-      // Save metadata
-      const dataStr = JSON.stringify({ isChunked: true, totalChunks: chunks.length });
+    const LIMIT = 900000; // 0.9MB to be safe for document limit
+
+    if (payload.length > LIMIT) {
+      console.log(`[Convex] Data is large (${payload.length} bytes), using Convex Storage...`);
+      
+      // 1. Get upload URL
+      const uploadUrl = await (client as any).mutation(anyApi.dps.generateUploadUrl);
+      
+      // 2. Upload the data
+      const result = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload
+      });
+      
+      if (!result.ok) throw new Error("Failed to upload to storage");
+      
+      const { storageId } = await result.json();
+      
+      // 3. Save the storageId in the document
       await (client as any).mutation(anyApi.dps.saveDpsData, {
         userId,
-        dataStr,
+        dataStr: JSON.stringify({ isStored: true, storageId }), // Minimal placeholder
+        storageId,
         updatedAt,
         version
       });
-      console.log("[Convex] Save chunked successful.");
+      
+      console.log("[Convex] Save via storage successful.");
       lastSyncStatus = true;
       return;
     }
     
-    // Else, normally stringify or keep compressed? 
-    // Wait, let's just always compress if we can? 
-    // Actually, to remain backward compatible, if it's small enough, just stringify.
-    const dataStr = jsonStr;
-
-    console.log(`[Convex] Saving data monolith... (${dataStr.length} bytes)`);
+    console.log(`[Convex] Saving data monolith... (${payload.length} bytes)`);
 
     await (client as any).mutation(anyApi.dps.saveDpsData, {
       userId,
-      dataStr,
+      dataStr: payload,
       updatedAt,
       version
     });
@@ -412,36 +446,36 @@ export const processSyncQueue = async () => {
     try {
       
     const jsonStr = JSON.stringify(item.data);
-    const compressed = LZString.compressToBase64(jsonStr);
-    const CHUNK_SIZE = 800000;
     const updatedAt = item.timestamp;
     const version = item.data.version || 1;
+
+    const compressed = LZString.compressToBase64(jsonStr);
+    const payload = JSON.stringify({ isCompressed: true, payload: compressed });
     
-    if (compressed.length > CHUNK_SIZE) {
-      const chunks = [];
-      for (let i = 0; i < compressed.length; i += CHUNK_SIZE) {
-        chunks.push(compressed.substring(i, i + CHUNK_SIZE));
-      }
-      for (let i = 0; i < chunks.length; i++) {
+    const LIMIT = 900000;
+
+    if (payload.length > LIMIT) {
+      // Background upload using storage
+      const uploadUrl = await (client as any).mutation(anyApi.dps.generateUploadUrl);
+      const result = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload
+      });
+      if (result.ok) {
+        const { storageId } = await result.json();
         await (client as any).mutation(anyApi.dps.saveDpsData, {
-          userId: item.userId + "_chunk_" + i,
-          dataStr: chunks[i],
+          userId: item.userId,
+          dataStr: JSON.stringify({ isStored: true, storageId }),
+          storageId,
           updatedAt,
           version
         });
       }
-      const dataStr = JSON.stringify({ isChunked: true, totalChunks: chunks.length });
-      await (client as any).mutation(anyApi.dps.saveDpsData, {
-        userId: item.userId,
-        dataStr,
-        updatedAt,
-        version
-      });
     } else {
-      const dataStr = jsonStr;
       await (client as any).mutation(anyApi.dps.saveDpsData, {
         userId: item.userId,
-        dataStr,
+        dataStr: payload,
         updatedAt,
         version
       });

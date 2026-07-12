@@ -36,22 +36,35 @@ export const fetchDpsData = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     console.log(`[Convex] Fetching data for user: ${args.userId}`);
-    return await ctx.db
+    const doc = await ctx.db
       .query("dps_data")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
+    
+    if (doc && doc.storageId) {
+      return {
+        ...doc,
+        storageUrl: await ctx.storage.getUrl(doc.storageId)
+      };
+    }
+    return doc;
   },
+});
+
+export const generateUploadUrl = mutation(async (ctx) => {
+  return await ctx.storage.generateUploadUrl();
 });
 
 export const saveDpsData = mutation({
   args: {
     userId: v.string(),
     dataStr: v.string(),
+    storageId: v.optional(v.string()),
     updatedAt: v.number(),
     version: v.number(),
   },
   handler: async (ctx, args) => {
-    console.log(`[Convex] Saving data for user: ${args.userId}`);
+    console.log(`[Convex] Saving data for user: ${args.userId} (storage: ${args.storageId ? "yes" : "no"})`);
     const existing = await ctx.db
       .query("dps_data")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
@@ -59,8 +72,12 @@ export const saveDpsData = mutation({
 
     if (existing) {
       if (args.updatedAt > (existing.updatedAt || 0)) {
+        // If we are replacing an old storage ID, we should ideally delete the old file,
+        // but Convex storage deletion is usually done via a separate process or we can do it here if we want.
+        // For simplicity, we'll just update the record.
         await ctx.db.patch(existing._id, {
           dataStr: args.dataStr,
+          storageId: args.storageId,
           updatedAt: args.updatedAt,
           version: args.version,
         });

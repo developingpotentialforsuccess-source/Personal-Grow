@@ -14,6 +14,7 @@ export default defineSchema({
   dps_data: defineTable({
     userId: v.string(),
     dataStr: v.string(), // JSON stringified meta data
+    storageId: v.optional(v.string()), // Optional Convex storage ID for large data
     updatedAt: v.number(),
     version: v.number(),
   }).index("by_userId", ["userId"]),
