@@ -50,7 +50,7 @@ export default defineSchema({
     title: v.string(),
     payload: v.any(),
     created_at: v.string(),
-  }).index("by_id", ["id"]),
+  }).index("by_share_id", ["id"]),
 
   // Backups
   dps_backups: defineTable({

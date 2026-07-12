@@ -1,7 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// 1. Auth Helpers
 export const getUser = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
@@ -33,10 +32,10 @@ export const createUser = mutation({
   },
 });
 
-// 2. Main DPS Data Monolith
 export const fetchDpsData = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
+    console.log(`[Convex] Fetching data for user: ${args.userId}`);
     return await ctx.db
       .query("dps_data")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
@@ -52,29 +51,29 @@ export const saveDpsData = mutation({
     version: v.number(),
   },
   handler: async (ctx, args) => {
+    console.log(`[Convex] Saving data for user: ${args.userId}`);
     const existing = await ctx.db
       .query("dps_data")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
+
     if (existing) {
-      // Server-side Last-Write-Wins (LWW) protection:
-      // Only allow updating if the incoming updatedAt timestamp is strictly greater than the existing cloud timestamp
       if (args.updatedAt > (existing.updatedAt || 0)) {
         await ctx.db.patch(existing._id, {
           dataStr: args.dataStr,
           updatedAt: args.updatedAt,
           version: args.version,
         });
-      } else {
-        console.log(`[saveDpsData] Rejected stale write. Existing: ${existing.updatedAt}, Incoming: ${args.updatedAt}`);
+        return { status: "updated" };
       }
+      return { status: "rejected", reason: "stale" };
     } else {
       await ctx.db.insert("dps_data", args);
+      return { status: "inserted" };
     }
   },
 });
 
-// 3. Granular Students
 export const fetchStudents = query({
   args: { owner_id: v.string() },
   handler: async (ctx, args) => {
@@ -101,6 +100,7 @@ export const saveStudent = mutation({
       .withIndex("by_owner_id", (q) => q.eq("owner_id", args.owner_id))
       .filter((q) => q.eq(q.field("id"), args.id))
       .first();
+
     if (existing) {
       await ctx.db.patch(existing._id, args);
     } else {
@@ -109,21 +109,6 @@ export const saveStudent = mutation({
   },
 });
 
-export const deleteStudent = mutation({
-  args: { owner_id: v.string(), id: v.string() },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("dps_students")
-      .withIndex("by_owner_id", (q) => q.eq("owner_id", args.owner_id))
-      .filter((q) => q.eq(q.field("id"), args.id))
-      .first();
-    if (existing) {
-      await ctx.db.delete(existing._id);
-    }
-  },
-});
-
-// 4. Granular Topics
 export const fetchTopics = query({
   args: { owner_id: v.string() },
   handler: async (ctx, args) => {
@@ -151,82 +136,11 @@ export const saveTopic = mutation({
       .withIndex("by_owner_id", (q) => q.eq("owner_id", args.owner_id))
       .filter((q) => q.eq(q.field("id"), args.id))
       .first();
+
     if (existing) {
       await ctx.db.patch(existing._id, args);
     } else {
       await ctx.db.insert("dps_topics", args);
     }
-  },
-});
-
-export const deleteTopic = mutation({
-  args: { owner_id: v.string(), id: v.string() },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("dps_topics")
-      .withIndex("by_owner_id", (q) => q.eq("owner_id", args.owner_id))
-      .filter((q) => q.eq(q.field("id"), args.id))
-      .first();
-    if (existing) {
-      await ctx.db.delete(existing._id);
-    }
-  },
-});
-
-// 5. Shared Notes
-export const fetchSharedNote = query({
-  args: { id: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("dps_shares")
-      .withIndex("by_id", (q) => q.eq("id", args.id))
-      .first();
-  },
-});
-
-export const saveSharedNote = mutation({
-  args: {
-    id: v.string(),
-    owner_id: v.string(),
-    owner_name: v.string(),
-    type: v.string(),
-    title: v.string(),
-    payload: v.any(),
-    created_at: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("dps_shares")
-      .withIndex("by_id", (q) => q.eq("id", args.id))
-      .first();
-    if (existing) {
-      await ctx.db.patch(existing._id, args);
-    } else {
-      await ctx.db.insert("dps_shares", args);
-    }
-  },
-});
-
-// 6. Backups
-export const fetchBackups = query({
-  args: { owner_id: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("dps_backups")
-      .withIndex("by_owner_id", (q) => q.eq("owner_id", args.owner_id))
-      .collect();
-  },
-});
-
-export const saveBackup = mutation({
-  args: {
-    id: v.string(),
-    owner_id: v.string(),
-    type: v.string(),
-    timestamp: v.string(),
-    data: v.any(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.insert("dps_backups", args);
   },
 });
