@@ -1,3 +1,4 @@
+import { anyApi } from "convex/server";
 import { ConvexClient } from "convex/browser";
 import { storage as localIndexedDB } from './storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,7 +51,7 @@ export const checkFirebaseConnection = async () => {
   try {
     // We try the query, but we don't let it block the UI with a failure unless it's fatal.
     // Convex handles its own reconnection logic internally.
-    await (client as any).query("dps:fetchDpsData", { userId: "ping" });
+    await (client as any).query(anyApi.dps.fetchDpsData, { userId: "ping" });
     lastSyncStatus = true;
     return true;
   } catch (e: any) {
@@ -253,7 +254,7 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
   // Use the standard onUpdate method for ConvexClient
   console.log(`[Convex] Subscribing to data for user: ${userId}`);
   
-  const unsubData = (client as any).onUpdate("dps:fetchDpsData", { userId }, (res: any) => {
+  const unsubData = (client as any).onUpdate(anyApi.dps.fetchDpsData, { userId }, (res: any) => {
     console.log("[Convex] Received cloud update:", res ? "Data found" : "No data");
     
     // res will be null if no data exists for this user in Convex yet
@@ -290,7 +291,7 @@ export const fetchData = async (userId: string) => {
     return stored ? JSON.parse(stored) : null;
   }
   try {
-    const res = await (client as any).query("dps:fetchDpsData", { userId });
+    const res = await (client as any).query(anyApi.dps.fetchDpsData, { userId });
     if (res) {
       const rawData = res.dataStr || res.data;
       return rawData ? JSON.parse(rawData) : null;
@@ -320,7 +321,7 @@ export const saveData = async (userId: string, dataState: any, instant: boolean 
 
     console.log(`[Convex] Saving data monolith... (${dataStr.length} bytes)`);
 
-    await (client as any).mutation("dps:saveDpsData", {
+    await (client as any).mutation(anyApi.dps.saveDpsData, {
       userId,
       dataStr,
       updatedAt,
@@ -350,7 +351,7 @@ export const processSyncQueue = async () => {
       const updatedAt = item.timestamp;
       const version = item.data.version || 1;
 
-      await (client as any).mutation("dps:saveDpsData", {
+      await (client as any).mutation(anyApi.dps.saveDpsData, {
         userId: item.userId,
         dataStr,
         updatedAt,
@@ -400,7 +401,7 @@ export const saveTopic = async (userId: string, topic: any, category: string = '
   if (!client) return;
   try {
     const { id, title, content, parentId, order, ...rest } = topic;
-    await (client as any).mutation("dps:saveTopic", {
+    await (client as any).mutation(anyApi.dps.saveTopic, {
       id,
       owner_id: userId,
       category,
@@ -418,7 +419,7 @@ export const saveTopic = async (userId: string, topic: any, category: string = '
 export const deleteStudent = async (userId: string, studentId: string, category: string = 'dpss') => {
   if (!client) return;
   try {
-    await (client as any).mutation("dps:deleteStudent", {
+    await (client as any).mutation(anyApi.dps.deleteStudent, {
       owner_id: userId,
       id: studentId
     });
@@ -431,7 +432,7 @@ export const saveStudent = async (userId: string, student: any, category: string
   if (!client) return;
   try {
     const { id, name, order, deletedAt, ...rest } = student;
-    await (client as any).mutation("dps:saveStudent", {
+    await (client as any).mutation(anyApi.dps.saveStudent, {
       id,
       owner_id: userId,
       name: name || "",
@@ -448,7 +449,7 @@ export const saveStudent = async (userId: string, student: any, category: string
 export const deleteTopic = async (userId: string, topicId: string, category: string = 'dpss') => {
   if (!client) return;
   try {
-    await (client as any).mutation("dps:deleteTopic", {
+    await (client as any).mutation(anyApi.dps.deleteTopic, {
       owner_id: userId,
       id: topicId
     });
@@ -506,7 +507,7 @@ export const saveHabitCompletion = async (userId: string, habitId: string, date:
 export const getSharedNote = async (shareId: string) => {
   if (!client) return null;
   try {
-    return await (client as any).query("dps:fetchSharedNote", { id: shareId });
+    return await (client as any).query(anyApi.dps.fetchSharedNote, { id: shareId });
   } catch (error) {
     console.error("Error fetching shared note:", error);
     return null;
@@ -517,7 +518,7 @@ export const createSharedNote = async (userId: string, ownerName: string, type: 
   const id = Math.random().toString(36).substring(2, 12);
   if (!client) return id;
   try {
-    await (client as any).mutation("dps:saveSharedNote", {
+    await (client as any).mutation(anyApi.dps.saveSharedNote, {
       id,
       owner_id: userId || "unknown",
       owner_name: ownerName,
@@ -536,7 +537,7 @@ export const createSharedNote = async (userId: string, ownerName: string, type: 
 export const getCloudBackups = async (userId: string) => {
   if (!client) return [];
   try {
-    const list = await (client as any).query("dps:fetchBackups", { owner_id: userId });
+    const list = await (client as any).query(anyApi.dps.fetchBackups, { owner_id: userId });
     return list || [];
   } catch (err) {
     return [];
@@ -547,7 +548,7 @@ export const createCloudBackup = async (userId: string, data: any) => {
   if (!client) return;
   try {
     const backupId = uuidv4();
-    await (client as any).mutation("dps:saveBackup", {
+    await (client as any).mutation(anyApi.dps.saveBackup, {
       id: backupId,
       owner_id: userId,
       type: "Manual",
