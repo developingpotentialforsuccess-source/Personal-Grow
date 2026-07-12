@@ -1537,96 +1537,9 @@ const App: React.FC = () => {
       )}
 
       {/* Persistent Sync Status Indicator (Google Docs Style) */}
-      <div className="fixed top-2 right-4 z-[100] no-print pointer-events-none">
-        <AnimatePresence mode="wait">
-          {isSyncing ? (
-            <motion.div
-              key="syncing"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full backdrop-blur-md"
-            >
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-                Saving...
-              </span>
-            </motion.div>
-          ) : lastSyncedTime ? (
-            isConvexConfigured() ? (
-              <motion.div
-                key="saved-cloud"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-full backdrop-blur-md"
-              >
-                <Check size={10} className="text-slate-400 dark:text-slate-500" />
-                <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
-                  Cloud Synced
-                </span>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="saved-local"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center gap-2 px-3 py-1.5 bg-amber-50/75 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-900/30 rounded-full backdrop-blur-md"
-              >
-                <HardDrive size={10} className="text-amber-500 dark:text-amber-400" />
-                <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400 uppercase tracking-tighter">
-                  Saved Locally (No Cloud)
-                </span>
-              </motion.div>
-            )
-          ) : null}
-        </AnimatePresence>
-      </div>
+      {/* Cloud Sync Status Indicator (Removed for Focus Mode) */}
 
-      {/* Non-Intrusive Animated Bottom Toast confirmation */}
-      <AnimatePresence>
-        {showSyncToast && (
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 15, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99999] flex items-center gap-3 px-4 py-3 bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-2xl font-sans select-none pointer-events-none"
-          >
-            {isConvexConfigured() ? (
-              <>
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/25 text-emerald-400">
-                  <Cloud size={14} className="animate-bounce" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black tracking-wider uppercase leading-none text-slate-200">
-                    Cloud Sync Success
-                  </span>
-                  <span className="text-[9px] font-medium leading-normal text-slate-400 mt-1">
-                    Data saved successfully to Convex
-                  </span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/25 text-amber-400">
-                  <HardDrive size={14} className="animate-bounce" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black tracking-wider uppercase leading-none text-slate-200">
-                    Local Save Success
-                  </span>
-                  <span className="text-[9px] font-medium leading-normal text-slate-400 mt-1">
-                    Data saved securely in your browser
-                  </span>
-                </div>
-              </>
-            )}
-            <div className="flex items-center justify-center w-4.5 h-4.5 rounded-full bg-emerald-500 text-slate-950 ml-2 shadow-inner">
-              <Check size={10} strokeWidth={4} />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Non-Intrusive Animated Bottom Toast confirmation (Removed for Focus Mode) */}
     </div>
   );
 };
