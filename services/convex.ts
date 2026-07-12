@@ -241,29 +241,35 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
     return () => {};
   }
 
-  const unsubData = client.onUpdate("dps:fetchDpsData" as any, { userId }, (res: any) => {
-    // res will be null if no data exists for this user in Convex yet
-    if (res === null) {
-      onUpdate(null);
-      return;
-    }
-
-    if (res) {
-      try {
-        const rawData = res.dataStr || res.data;
-        if (rawData) {
-          const cloudData = JSON.parse(rawData);
-          // Preserve the cloud timestamp as source of truth for conflict resolution
-          cloudData.updatedAt = res.updatedAt || cloudData.updatedAt;
-          onUpdate(cloudData);
-        } else {
-          onUpdate(null);
-        }
-      } catch (e) {
-        console.error("Failed to parse cloud data:", e);
-        onUpdate(null); // Fallback to allow initial local sync
-        if (onError) onError(e);
+  const unsubData = client.subscribe("dps:fetchDpsData" as any, { userId }, {
+    onUpdate: (res: any) => {
+      // res will be null if no data exists for this user in Convex yet
+      if (res === null) {
+        onUpdate(null);
+        return;
       }
+
+      if (res) {
+        try {
+          const rawData = res.dataStr || res.data;
+          if (rawData) {
+            const cloudData = JSON.parse(rawData);
+            // Preserve the cloud timestamp as source of truth for conflict resolution
+            cloudData.updatedAt = res.updatedAt || cloudData.updatedAt;
+            onUpdate(cloudData);
+          } else {
+            onUpdate(null);
+          }
+        } catch (e) {
+          console.error("Failed to parse cloud data:", e);
+          onUpdate(null); // Fallback to allow initial local sync
+          if (onError) onError(e);
+        }
+      }
+    },
+    onError: (err) => {
+      console.error("Convex subscription error:", err);
+      if (onError) onError(err);
     }
   });
 
