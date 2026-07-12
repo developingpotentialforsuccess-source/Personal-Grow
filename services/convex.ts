@@ -22,7 +22,7 @@ if (CONVEX_URL === "https://valuable-fish-943.convex.cloud") {
 
 
 
-// trigger github sync
+// Removed trigger github sync comment
 export const isConvexConfigured = () => {
   return CONVEX_URL !== "https://dummy-convex-url.convex.cloud" && CONVEX_URL.trim() !== "";
 };
