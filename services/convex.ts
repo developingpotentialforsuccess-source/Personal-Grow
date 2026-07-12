@@ -241,41 +241,38 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
     return () => {};
   }
 
-  const unsubData = client.subscribe("dps:fetchDpsData" as any, { userId }, {
-    onUpdate: (res: any) => {
-      // res will be null if no data exists for this user in Convex yet
-      if (res === null) {
-        onUpdate(null);
-        return;
-      }
+  // Use the standard onUpdate method for ConvexClient
+  console.log(`[Convex] Subscribing to data for user: ${userId}`);
+  
+  const unsubData = (client as any).onUpdate("dps:fetchDpsData", { userId }, (res: any) => {
+    console.log("[Convex] Received cloud update:", res ? "Data found" : "No data");
+    
+    // res will be null if no data exists for this user in Convex yet
+    if (res === null) {
+      onUpdate(null);
+      return;
+    }
 
-      if (res) {
-        try {
-          const rawData = res.dataStr || res.data;
-          if (rawData) {
-            const cloudData = JSON.parse(rawData);
-            // Preserve the cloud timestamp as source of truth for conflict resolution
-            cloudData.updatedAt = res.updatedAt || cloudData.updatedAt;
-            onUpdate(cloudData);
-          } else {
-            onUpdate(null);
-          }
-        } catch (e) {
-          console.error("Failed to parse cloud data:", e);
-          onUpdate(null); // Fallback to allow initial local sync
-          if (onError) onError(e);
+    if (res) {
+      try {
+        const rawData = res.dataStr || res.data;
+        if (rawData) {
+          const cloudData = JSON.parse(rawData);
+          // Preserve the cloud timestamp as source of truth for conflict resolution
+          cloudData.updatedAt = res.updatedAt || cloudData.updatedAt;
+          onUpdate(cloudData);
+        } else {
+          onUpdate(null);
         }
+      } catch (e) {
+        console.error("[Convex] Failed to parse cloud data:", e);
+        onUpdate(null); // Fallback to allow initial local sync
+        if (onError) onError(e);
       }
-    },
-    onError: (err) => {
-      console.error("Convex subscription error:", err);
-      if (onError) onError(err);
     }
   });
 
-  return () => {
-    unsubData();
-  };
+  return unsubData;
 };
 
 export const fetchData = async (userId: string) => {
@@ -312,15 +309,18 @@ export const saveData = async (userId: string, dataState: any, instant: boolean 
     const updatedAt = dataState.updatedAt || Date.now();
     const version = dataState.version || 1;
 
+    console.log(`[Convex] Saving data monolith... (${dataStr.length} bytes)`);
+
     await (client as any).mutation("dps:saveDpsData", {
       userId,
       dataStr,
       updatedAt,
       version
     });
+    console.log("[Convex] Save successful.");
     lastSyncStatus = true;
   } catch (error) {
-    console.error("Convex save exception during save:", error);
+    console.error("[Convex] Convex save exception:", error);
     await localIndexedDB.queueSync(userId, dataState);
     lastSyncStatus = false;
   }
