@@ -34,49 +34,34 @@ let isSyncingQueue = false;
 export const getConvexUrl = () => CONVEX_URL;
 
 export const checkFirebaseConnection = async () => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return true;
   if (!window.navigator.onLine) return false;
   if (!client) return false;
   
   try {
-    // 1. First try a simple fetch to see if the cloud endpoint is alive at all
-    // Use a timeout to avoid hanging
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    try {
-      const response = await fetch(CONVEX_URL, { 
-        method: 'HEAD', 
-        mode: 'no-cors',
-        signal: controller.signal 
-      });
-      clearTimeout(timeoutId);
-      // Even with no-cors, if it doesn't throw, the server is there
-    } catch (e) {
-      clearTimeout(timeoutId);
-      console.warn("HEAD check to Convex URL failed, but might be normal due to CORS:", e);
-      // We don't return false here yet because the query might still work
-    }
-
-    // 2. Run a quick query to verify Convex is actually reachable and our backend functions are deployed
-    // We use a timeout for the query too
+    // Run a quick query to verify Convex is reachable
+    // We use a longer timeout and don't fail hard on timeouts if we were previously connected
     const queryPromise = (client as any).query("dps:fetchDpsData", { userId: "ping" });
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Convex query timeout")), 8000));
+    const result = await Promise.race([
+      queryPromise,
+      new Promise((resolve) => setTimeout(() => resolve("timeout"), 10000))
+    ]);
+
+    if (result !== "timeout") {
+      lastSyncStatus = true;
+      return true;
+    }
     
-    await Promise.race([queryPromise, timeoutPromise]);
-    
-    lastSyncStatus = true;
-    return true;
+    // If it's just a timeout, trust the last known status
+    return lastSyncStatus;
   } catch (e: any) {
-    console.error("Real connection check to Convex failed:", e);
-    // If it's a specific error like "Function not found", it means the backend isn't deployed
+    // Only a "Function not found" error confirms a deployment failure
     if (e.message?.includes("Function not found")) {
       lastSyncStatus = false;
       return false;
     }
     
-    // If we're here, it might be a temporary network glitch.
-    // Let's check if we have recently had a successful sync
+    // For other errors (like transient network issues), keep the current status
     return lastSyncStatus;
   }
 };
