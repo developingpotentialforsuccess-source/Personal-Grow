@@ -13,16 +13,8 @@ declare global {
 }
 
 // Try to load CONVEX_URL from environment variables
-let CONVEX_URL = ((typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_CONVEX_URL) || (typeof process !== 'undefined' && process.env?.CONVEX_URL) || "https://dapper-robin-600.convex.cloud").replace(/\/$/, "");
+const CONVEX_URL = "https://dapper-robin-600.convex.cloud";
 
-// CRITICAL FIX: The Vercel deployment has VITE_CONVEX_URL pointing to the DEV instance, 
-// but the CONVEX_DEPLOY_KEY provided to Vercel is for the PROD instance (dapper-robin-600).
-// Since the build script deploys the functions to PROD, the app must connect to PROD.
-// If we detect the specific DEV URL, we force it to the PROD URL where the functions actually exist.
-if (CONVEX_URL === "https://valuable-fish-943.convex.cloud") {
-  console.warn("[Convex] Detected dev URL in Vercel environment. Overriding with prod URL (dapper-robin-600) to match the deployment key.");
-  CONVEX_URL = "https://dapper-robin-600.convex.cloud";
-}
 
 export const isConvexConfigured = () => {
   return CONVEX_URL !== "https://dummy-convex-url.convex.cloud" && CONVEX_URL.trim() !== "";
