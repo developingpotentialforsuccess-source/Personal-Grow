@@ -763,23 +763,25 @@ const App: React.FC = () => {
           return;
         }
 
-        // 3. Conflict Prevention & Safe Overwrites
+        // 3. Safe Merge & Conflict Prevention
         const currentUpdatedAt = currentData?.updatedAt || 0;
         const incomingUpdatedAt = clonedData?.updatedAt || 0;
+        const timeSinceLastLocalUpdate = Date.now() - lastLocalUpdateRef.current;
 
-        // On initial load, we always accept the cloud data.
-        // During live use, we accept the cloud data unless the user is actively typing,
-        // or we have unsaved local edits that are newer.
+        // PROTECTION LOGIC:
+        // We only reject cloud data if:
+        // 1. The user is actively typing right now (within 2 seconds).
+        // 2. OR we have local unsaved changes that are strictly NEWER than what just came from the cloud.
         if (!isFirstLoad) {
-          const timeSinceLastLocalUpdate = Date.now() - lastLocalUpdateRef.current;
-          
-          // If the user is actively editing right now (within 2 seconds), protect their keystrokes
+          // Active typing protection
           if (timeSinceLastLocalUpdate < 2000) {
+            console.log("[Sync] Rejecting cloud data: User is actively editing.");
             return;
           }
 
-          // If we have unsaved local changes (e.g. offline edits), protect them from being overwritten by older cloud data
-          if (hasUnsavedChangesRef.current && incomingUpdatedAt <= currentUpdatedAt) {
+          // Conflict protection: If local state is newer, don't let old cloud state overwrite it
+          if (hasUnsavedChangesRef.current && incomingUpdatedAt < currentUpdatedAt) {
+            console.log("[Sync] Rejecting stale cloud data. Local is newer.");
             return;
           }
         }

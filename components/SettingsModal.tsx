@@ -211,9 +211,15 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
   const checkSyncStatus = async () => {
     setCheckingSync(true);
     try {
-      const { isFirebaseConfigured, checkFirebaseConnection } = await import('../services/convex');
+      const { isFirebaseConfigured, checkFirebaseConnection, processSyncQueue } = await import('../services/convex');
       const configured = isFirebaseConfigured();
       const connected = await checkFirebaseConnection();
+      
+      if (connected) {
+        // If we successfully reconnected, try to flush any pending local changes immediately
+        processSyncQueue().catch(console.error);
+      }
+
       setSyncStatus({ 
         configured, 
         connected, 
