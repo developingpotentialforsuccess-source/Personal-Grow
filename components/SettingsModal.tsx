@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AppSettings, CurrentUser, AppData } from '../types';
 import { X, Save, Settings2, Type, Baseline, Paintbrush, Check, Cloud, LogIn, LogOut, Image as ImageIcon, Trash2, FileText, Coins, Table, Download, Upload, RefreshCw, ExternalLink } from 'lucide-react';
 import { PAPER_STYLES } from '../src/styles/paperStyles';
-import { getFirebaseProjectId, isConvexConfigured } from '../services/convex';
+import { getFirebaseProjectId, isConvexConfigured, getConvexUrl } from '../services/convex';
 
 declare global {
   interface Window {
@@ -794,21 +794,65 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                     {currentUser?.uid && isConvexConfigured() ? (
                         <>
                           <>
-                            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
-                              <Check size={24} strokeWidth={3} />
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-1 ${
+                              checkingSync ? 'bg-amber-100 text-amber-650 animate-pulse' : 
+                              syncStatus.connected ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-650'
+                            }`}>
+                              {checkingSync ? (
+                                <RefreshCw className="w-6 h-6 animate-spin text-amber-650" />
+                              ) : syncStatus.connected ? (
+                                <Check size={24} strokeWidth={3} />
+                              ) : (
+                                <Cloud size={24} className="text-red-650 animate-bounce" />
+                              )}
                             </div>
                             <div className="w-full">
-                              <p className="text-sm font-black text-slate-800 mb-1">Synced & Backed Up</p>
+                              <p className="text-sm font-black text-slate-800 mb-1">
+                                {checkingSync ? "Verifying Cloud Sync..." :
+                                 syncStatus.connected ? "Synced & Backed Up" : "Sync Error Detected"}
+                              </p>
                               {currentUser?.email && <p className="text-[10px] font-bold text-orange-600 mb-1 break-all tracking-tight">{currentUser.email}</p>}
-                              {/* Hidden Firebase Cloud Active indicator per user request */}
-                              <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                                Your data is successfully synchronizing live!
-                                {lastSyncedTime && (
+                              
+                              {/* Connection Status Details Panel */}
+                              <div className="mt-3 text-xs border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-left space-y-2 w-full font-sans">
+                                <div className="flex justify-between items-center gap-2">
+                                  <span className="font-bold text-slate-500 text-[9px] uppercase tracking-wider">Cloud Engine:</span>
+                                  <span className="font-mono text-[9px] text-slate-600 bg-white px-1.5 py-0.5 border border-slate-100 rounded select-all max-w-[170px] truncate" title={getConvexUrl()}>{getConvexUrl()}</span>
+                                </div>
+                                <div className="flex justify-between items-center gap-2">
+                                  <span className="font-bold text-slate-500 text-[9px] uppercase tracking-wider">Sync State:</span>
+                                  {checkingSync ? (
+                                    <span className="text-[9px] font-black text-amber-600 animate-pulse uppercase tracking-wider">Pinging...</span>
+                                  ) : syncStatus.connected ? (
+                                    <span className="text-[9px] font-black text-emerald-600 flex items-center gap-1 uppercase tracking-wider">● Connected</span>
+                                  ) : (
+                                    <span className="text-[9px] font-black text-rose-500 flex items-center gap-1 uppercase tracking-wider">● Offline</span>
+                                  )}
+                                </div>
+                                
+                                {!checkingSync && !syncStatus.connected && (
+                                  <div className="mt-2 border-t border-red-100/50 pt-2 text-[10px] text-red-700 leading-relaxed font-bold bg-red-50/40 p-2 rounded-lg">
+                                    <span className="font-black block text-[8px] uppercase tracking-wider text-rose-800 mb-0.5">Diagnostic Error:</span>
+                                    {syncStatus.error || "Failed to reach Convex Cloud. Make sure your server functions are deployed."}
+                                    <button 
+                                      onClick={checkSyncStatus}
+                                      className="mt-2 w-full py-1 text-[9px] uppercase tracking-wider border border-slate-250 bg-white hover:bg-slate-50 text-slate-800 font-black rounded-md transition-colors"
+                                    >
+                                      Re-Test Connection
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              <p className="text-xs text-slate-500 leading-relaxed mt-3 mb-4">
+                                {syncStatus.connected ? "Your data is successfully synchronizing live!" : "Synchronization is paused until cloud connectivity is restored."}
+                                {lastSyncedTime && syncStatus.connected && (
                                   <span className="block mt-1 text-[9px] text-slate-400 font-medium">
                                     Last synced: {new Date(lastSyncedTime).toLocaleTimeString()}
                                   </span>
                                 )}
                               </p>
+                              
                               <button 
                                 onClick={onLogout}
                                 className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg hover:bg-slate-50 hover:text-red-500 transition-colors font-bold text-xs flex items-center gap-2 mx-auto"

@@ -57,11 +57,17 @@ export const saveDpsData = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        dataStr: args.dataStr,
-        updatedAt: args.updatedAt,
-        version: args.version,
-      });
+      // Server-side Last-Write-Wins (LWW) protection:
+      // Only allow updating if the incoming updatedAt timestamp is strictly greater than the existing cloud timestamp
+      if (args.updatedAt > (existing.updatedAt || 0)) {
+        await ctx.db.patch(existing._id, {
+          dataStr: args.dataStr,
+          updatedAt: args.updatedAt,
+          version: args.version,
+        });
+      } else {
+        console.log(`[saveDpsData] Rejected stale write. Existing: ${existing.updatedAt}, Incoming: ${args.updatedAt}`);
+      }
     } else {
       await ctx.db.insert("dps_data", args);
     }

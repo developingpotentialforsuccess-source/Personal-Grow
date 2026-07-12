@@ -31,12 +31,24 @@ if (isConvexConfigured()) {
 let lastSyncStatus = false;
 let isSyncingQueue = false;
 
+export const getConvexUrl = () => CONVEX_URL;
+
 export const checkFirebaseConnection = async () => {
-  return typeof window !== 'undefined' && window.navigator.onLine;
+  if (typeof window === 'undefined') return false;
+  if (!window.navigator.onLine) return false;
+  if (!client) return false;
+  try {
+    // Run a quick query to verify Convex is actually reachable and our backend functions are deployed
+    await (client as any).query("dps:fetchDpsData", { userId: "ping" });
+    return true;
+  } catch (e) {
+    console.error("Real connection check to Convex failed:", e);
+    return false;
+  }
 };
 
 export const checkConvexConnection = async () => {
-  return typeof window !== 'undefined' && window.navigator.onLine;
+  return checkFirebaseConnection();
 };
 
 // Architecture constants (20 MB limit as requested by user)

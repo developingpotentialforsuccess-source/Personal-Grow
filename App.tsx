@@ -720,13 +720,16 @@ const App: React.FC = () => {
            return;
         }
 
+        // Deep clone the incoming data to prevent mutations of frozen/read-only Convex query objects
+        const clonedData = JSON.parse(JSON.stringify(newData));
+
         // Offline-First Safety Merge:
         // If this is the first load, and the incoming cloud data is empty (no students and no topics),
         // but we already have non-empty local data in this browser, we DO NOT want to overwrite and wipe out
         // our local data. Instead, we keep our local data and let the auto-sync hook upload it to the cloud.
-        const isCloudEmpty = (!newData.dpssTopics || newData.dpssTopics.length === 0) && 
-                             (!newData.selfLearningTopics || newData.selfLearningTopics.length === 0) && 
-                             (!newData.students || newData.students.length === 0);
+        const isCloudEmpty = (!clonedData.dpssTopics || clonedData.dpssTopics.length === 0) && 
+                             (!clonedData.selfLearningTopics || clonedData.selfLearningTopics.length === 0) && 
+                             (!clonedData.students || clonedData.students.length === 0);
 
         const currentData = currentDataRef.current;
         const isLocalNotEmpty = currentData && (
@@ -741,13 +744,13 @@ const App: React.FC = () => {
           return;
         }
 
-        const incomingStr = JSON.stringify(newData);
+        const incomingStr = JSON.stringify(clonedData);
         const currentDataStr = JSON.stringify(currentData);
         
         // 1. If incoming data is exactly what we already have locally, ignore
         if (currentDataStr === incomingStr) {
           previousDataSyncRef.current = incomingStr;
-          lastSyncedUpdatedAtRef.current = newData.updatedAt || 0;
+          lastSyncedUpdatedAtRef.current = clonedData.updatedAt || 0;
           isCloudLoadedRef.current = true;
           setLoading(false);
           return;
@@ -760,28 +763,31 @@ const App: React.FC = () => {
           return;
         }
 
-        // 3. Last Write Wins / Conflict Prevention
+        // 3. Conflict Prevention & Safe Overwrites
         const currentUpdatedAt = currentData?.updatedAt || 0;
-        const incomingUpdatedAt = newData?.updatedAt || 0;
+        const incomingUpdatedAt = clonedData?.updatedAt || 0;
 
-        // On initial load, we always accept the cloud data
+        // On initial load, we always accept the cloud data.
+        // During live use, we accept the cloud data unless the user is actively typing,
+        // or we have unsaved local edits that are newer.
         if (!isFirstLoad) {
-          // If incoming data is NOT strictly newer, ignore it.
-          if (incomingUpdatedAt <= currentUpdatedAt && currentUpdatedAt !== 0) {
+          const timeSinceLastLocalUpdate = Date.now() - lastLocalUpdateRef.current;
+          
+          // If the user is actively editing right now (within 2 seconds), protect their keystrokes
+          if (timeSinceLastLocalUpdate < 2000) {
             return;
           }
-          
-          // Protection during active editing
-          const timeSinceLastLocalUpdate = Date.now() - lastLocalUpdateRef.current;
-          if (timeSinceLastLocalUpdate < 2000 && incomingUpdatedAt < lastLocalUpdateRef.current - 500) {
-             return;
+
+          // If we have unsaved local changes (e.g. offline edits), protect them from being overwritten by older cloud data
+          if (hasUnsavedChangesRef.current && incomingUpdatedAt <= currentUpdatedAt) {
+            return;
           }
         }
 
         // Ensure DEFAULT_COLUMNS are initialized
-        if (!newData.settings?.columns) {
-          newData.settings = {
-            ...(newData.settings || {
+        if (!clonedData.settings?.columns) {
+          clonedData.settings = {
+            ...(clonedData.settings || {
               fontSize: 12,
               fontFamily: "'Inter', sans-serif",
             }),
@@ -789,21 +795,21 @@ const App: React.FC = () => {
           };
         } else {
           // Migration: Remove redundant 'name' column if it exists in settings
-          const hasNameCol = newData.settings.columns.some(
+          const hasNameCol = clonedData.settings.columns.some(
             (c: any) => c.key === "name",
           );
           if (hasNameCol) {
-            newData.settings.columns = newData.settings.columns.filter(
+            clonedData.settings.columns = clonedData.settings.columns.filter(
               (c: any) => c.key !== "name",
             );
           }
 
           // Migration: Ensure 'schedule' column exists if missing
-          const hasSchedule = newData.settings.columns.some(
+          const hasSchedule = clonedData.settings.columns.some(
             (c: any) => c.key === "schedule",
           );
           if (!hasSchedule) {
-            const newCols = [...newData.settings.columns];
+            const newCols = [...clonedData.settings.columns];
             // Try to insert after behavior or before time
             const behaviorIdx = newCols.findIndex(
               (c: any) => c.key === "behavior",
@@ -817,28 +823,18 @@ const App: React.FC = () => {
             } else {
               newCols.push(DEFAULT_COLUMNS.find((c) => c.key === "schedule")!);
             }
-            newData.settings.columns = newCols;
+            clonedData.settings.columns = newCols;
           }
         }
 
-        const cloudStr = JSON.stringify(newData);
-        if (cloudStr === previousDataSyncRef.current) {
-          isCloudLoadedRef.current = true;
-          setLoading(false);
-          return;
-        }
+        const cloudStr = JSON.stringify(clonedData);
+        const cloudUpdateAt = clonedData.updatedAt || 0;
 
-        const cloudUpdateAt = newData.updatedAt || 0;
-        const localUpdateAt = currentDataRef.current?.updatedAt || 0;
-
-        // If cloud is newer or local is significantly older/empty, take cloud
-        if (cloudUpdateAt >= localUpdateAt || localUpdateAt === 0) {
-          previousDataSyncRef.current = cloudStr;
-          lastSyncedUpdatedAtRef.current = cloudUpdateAt;
-          setInternalData(newData);
-          setLastSyncedTime(Date.now());
-          storage.setItem("dps_data", cloudStr);
-        }
+        previousDataSyncRef.current = cloudStr;
+        lastSyncedUpdatedAtRef.current = cloudUpdateAt;
+        setInternalData(clonedData);
+        setLastSyncedTime(Date.now());
+        storage.setItem("dps_data", cloudStr);
         
         isCloudLoadedRef.current = true;
         setLoading(false);
