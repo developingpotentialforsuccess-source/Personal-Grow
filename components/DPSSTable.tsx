@@ -147,6 +147,8 @@ interface DPSSTableProps {
 
 export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTopic, onOpenSidebar, currentUser }) => {
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [moveTargetTopic, setMoveTargetTopic] = useState<DPSSTopic | null>(null);
+  const [moveSearchQuery, setMoveSearchQuery] = useState('');
   const [isTableResizeLocked, setIsTableResizeLocked] = useState(true);
   const [gridOpacity, setGridOpacity] = useState(100);
   const [showRuler, setShowRuler] = useState(false);
@@ -2639,6 +2641,105 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
     showFeedback('Saved to Template Library!');
   };
 
+  const getDescendantIds = (topic: DPSSTopic): string[] => {
+    let ids = [topic.id];
+    if (topic.children) {
+      for (const child of topic.children) {
+        ids = [...ids, ...getDescendantIds(child)];
+      }
+    }
+    return ids;
+  };
+
+  const getExcludeSet = (topic: DPSSTopic | null): Set<string> => {
+    if (!topic) return new Set<string>();
+    return new Set<string>(getDescendantIds(topic));
+  };
+
+  const getMoveDestinations = (items: DPSSTopic[], idToExcludes: Set<string>, depth = 0): { id: string; title: string; depth: number }[] => {
+    let result: { id: string; title: string; depth: number }[] = [];
+    if (!Array.isArray(items)) return result;
+    for (const item of items) {
+      if (!item) continue;
+      if (idToExcludes.has(item.id)) continue;
+      result.push({ id: item.id, title: item.title, depth });
+      if (item.children && item.children.length > 0) {
+        const childDestinations = getMoveDestinations(item.children, idToExcludes, depth + 1);
+        result = [...result, ...childDestinations];
+      }
+    }
+    return result;
+  };
+
+  const moveTopicToNewParent = (sourceId: string, targetParentId: string | null) => {
+    if (sourceId === targetParentId) return;
+
+    const findSpecificTopic = (items: DPSSTopic[], searchId: string): DPSSTopic | null => {
+      if (!Array.isArray(items)) return null;
+      for (const item of items) {
+        if (!item) continue;
+        if (item.id === searchId) return item;
+        if (item.children) {
+          const found = findSpecificTopic(item.children, searchId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const topicToMove = findSpecificTopic(data.dpssTopics || [], sourceId);
+    if (!topicToMove) return;
+
+    const removeTopic = (items: DPSSTopic[]): DPSSTopic[] => {
+      if (!Array.isArray(items)) return [];
+      return items.filter(item => item.id !== sourceId).map(item => ({
+        ...item,
+        children: item.children ? removeTopic(item.children) : undefined
+      }));
+    };
+
+    let updated = removeTopic(data.dpssTopics || []);
+
+    const addTopicToTarget = (items: DPSSTopic[]): DPSSTopic[] => {
+      if (targetParentId === null) {
+        return [...items, topicToMove];
+      }
+      
+      return items.map(item => {
+        if (item.id === targetParentId) {
+          return {
+            ...item,
+            children: [...(item.children || []), topicToMove]
+          };
+        }
+        return {
+          ...item,
+          children: item.children ? addTopicToTarget(item.children) : undefined
+        };
+      });
+    };
+
+    updated = addTopicToTarget(updated);
+    onUpdate({ ...data, dpssTopics: updated });
+
+    // Sync to Convex
+    import('../services/convex').then(({ saveTopic }) => {
+      const storedUser = localStorage.getItem('dps_user');
+      if (storedUser) {
+        try {
+          const u = JSON.parse(storedUser);
+          if (u.uid) {
+            saveTopic(u.uid, topicToMove, 'dpss');
+            if (targetParentId) {
+              const newParent = findSpecificTopic(updated, targetParentId);
+              if (newParent) saveTopic(u.uid, newParent, 'dpss');
+            }
+          }
+        } catch(e){}
+      }
+    });
+  };
+
   const moveTopicToSelfLearning = async (topicToMove: DPSSTopic) => {
     if (topicToMove.isLocked) {
       const userInput = prompt(`This folder/document is LOCKED.\nTo move it, you must type the word "Move" exactly:`);
@@ -4856,10 +4957,10 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
           }`}
         >
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            {!topic.isLocked && (
-              <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 transition-colors shrink-0 flex items-center justify-center p-1 -ml-1">
-                <GripVertical size={14} />
-              </div>
+            {showTopicNumbers && numberPrefix && (
+              <span className="font-mono text-[10px] text-slate-500 bg-slate-100/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded select-none shrink-0 border border-slate-200/40 dark:border-slate-700/40 font-medium">
+                {numberPrefix}
+              </span>
             )}
             {hasChildren ? (
               <button 
@@ -4915,11 +5016,6 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                     className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm" 
                     style={{ backgroundColor: data.settings?.priorities?.find(p => p.id === topic.priority)?.color || '#64748b' }}
                   />
-                )}
-                {showTopicNumbers && numberPrefix && (
-                  <span className="font-mono text-[10px] text-slate-500 bg-slate-100/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded select-none shrink-0 border border-slate-200/40 dark:border-slate-700/40 font-medium">
-                    {numberPrefix}
-                  </span>
                 )}
                 {topic.title}
                 {topic.isLocked && <Lock size={10} className="text-slate-400 shrink-0" />}
@@ -5020,7 +5116,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
 
                     <div className="h-px bg-slate-200 dark:bg-slate-700 my-1 mx-2" />
 
-                    <div className="px-3 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Priority</div>
+                    <div className="px-3 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Move to Priority</div>
                     
                     {(data.settings?.priorities || []).map((priority) => (
                         <button 
@@ -5033,9 +5129,22 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                           className="w-full text-left flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors text-xs"
                         >
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: priority.color }} />
-                          {topic.priority === priority.id ? <span className="font-bold">{priority.label}</span> : priority.label}
+                          {topic.priority === priority.id ? <span className="font-bold">Move to {priority.label}</span> : `Move to ${priority.label}`}
                         </button>
                     ))}
+
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setMoveTargetTopic(topic);
+                        setMoveSearchQuery('');
+                        setOpenMenuId(null);
+                      }} 
+                      className="w-full text-left flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors text-xs font-bold text-orange-600 dark:text-orange-400"
+                    >
+                      <ArrowRightLeft size={14} className="text-orange-500 shrink-0" />
+                      Move to Location (More)...
+                    </button>
 
                     <div className="h-px bg-slate-200 dark:bg-slate-700 my-1 mx-2" />
 
@@ -5156,11 +5265,12 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
           }
         `}
       >
-        <div className="flex items-center justify-between mb-2 shrink-0">
-          <h2 className="text-xl font-black text-slate-800 tracking-tight whitespace-nowrap">Note-taking</h2>
+        <div className="flex items-center justify-between mb-2 shrink-0 w-full relative">
+          <div className="w-10 shrink-0" />
+          <h2 className="text-xl font-black text-slate-800 tracking-tight whitespace-nowrap flex-1 text-center">Note-taking</h2>
           <button 
             onClick={() => setIsSidebarOpen(false)} 
-            className="p-2 text-slate-500 hover:bg-slate-100 rounded-full"
+            className="p-2 text-slate-500 hover:bg-slate-100 rounded-full shrink-0"
           >
             <ChevronLeft size={24} />
           </button>
@@ -7936,6 +8046,157 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moveTargetTopic && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4 z-[99999] animate-fade-in font-sans">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[24px] max-w-lg w-full shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-3 text-orange-500">
+                <ArrowRightLeft size={20} className="stroke-[2.5]" />
+                <h3 className="text-sm font-black tracking-wider uppercase text-slate-800 dark:text-slate-100">Move Document / Folder</h3>
+              </div>
+              <button 
+                onClick={() => setMoveTargetTopic(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full"
+              >
+                <ChevronLeft size={20} />
+              </button>
+            </div>
+
+            <div className="py-3 shrink-0">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Moving Item</p>
+              <div className="flex items-center gap-2 mt-1.5 p-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 rounded-xl">
+                <Folder size={16} className="text-orange-500 shrink-0" />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{moveTargetTopic.title}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <p className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">Quick Move to Priority Category</p>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => {
+                    updateTopic(moveTargetTopic.id, { priority: 'very-important' });
+                    showFeedback('Moved to Urgent Priority!');
+                    setMoveTargetTopic(null);
+                  }}
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 hover:border-red-500/20 hover:bg-red-50/10 dark:hover:border-red-500/30 transition-all"
+                >
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  Urgent
+                </button>
+                <button
+                  onClick={() => {
+                    updateTopic(moveTargetTopic.id, { priority: 'important' });
+                    showFeedback('Moved to High Priority!');
+                    setMoveTargetTopic(null);
+                  }}
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 hover:border-amber-500/20 hover:bg-amber-50/10 dark:hover:border-amber-500/30 transition-all"
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  High
+                </button>
+                <button
+                  onClick={() => {
+                    updateTopic(moveTargetTopic.id, { priority: 'less-important' });
+                    showFeedback('Moved to Normal Priority!');
+                    setMoveTargetTopic(null);
+                  }}
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 hover:border-emerald-500/20 hover:bg-emerald-50/10 dark:hover:border-emerald-500/30 transition-all"
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Normal
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-3 min-h-0 flex flex-col">
+              <div className="flex items-center justify-between mb-2 shrink-0">
+                <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">Select Folder Location (Move To)</span>
+                <input
+                  type="text"
+                  placeholder="Search folder..."
+                  value={moveSearchQuery}
+                  onChange={(e) => setMoveSearchQuery(e.target.value)}
+                  className="px-2.5 py-1 text-[10px] border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none focus:border-orange-500 w-32"
+                />
+              </div>
+
+              <div className="space-y-1.5 max-h-[250px] overflow-y-auto pr-1 flex-1">
+                {!moveSearchQuery && (
+                  <button
+                    onClick={() => {
+                      moveTopicToNewParent(moveTargetTopic.id, null);
+                      showFeedback('Moved to Top-Level!');
+                      setMoveTargetTopic(null);
+                    }}
+                    className="w-full flex items-center gap-2 p-2 rounded-xl bg-slate-50 hover:bg-orange-50/20 dark:bg-slate-850 dark:hover:bg-slate-800 border border-slate-200/50 dark:border-slate-800 text-left transition-all"
+                  >
+                    <Folder size={15} className="text-slate-400" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">[📁 Top-Level / Root]</span>
+                  </button>
+                )}
+
+                {(() => {
+                  const idExcludes = getExcludeSet(moveTargetTopic);
+                  const destinations = getMoveDestinations(data.dpssTopics || [], idExcludes);
+                  
+                  const filtered = destinations.filter(d => 
+                    d.title.toLowerCase().includes(moveSearchQuery.toLowerCase())
+                  );
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="text-center p-4 text-[10px] uppercase font-bold text-slate-400">
+                        No target folders available
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((dest) => (
+                    <button
+                      key={dest.id}
+                      onClick={() => {
+                        moveTopicToNewParent(moveTargetTopic.id, dest.id);
+                        showFeedback(`Moved into "${dest.title}"!`);
+                        setMoveTargetTopic(null);
+                      }}
+                      style={{ paddingLeft: `${dest.depth * 16 + 12}px` }}
+                      className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-orange-50/20 dark:hover:bg-slate-800/80 hover:text-orange-500 border border-transparent hover:border-slate-200/30 dark:hover:border-slate-700/50 text-left transition-all"
+                    >
+                      <Folder size={14} className="text-orange-400 shrink-0" />
+                      <span className="text-xs text-slate-700 dark:text-slate-300 font-medium truncate">{dest.title}</span>
+                    </button>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
+              <p className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider mb-2">Cross-Workspace Actions</p>
+              <button
+                onClick={() => {
+                  moveTopicToSelfLearning(moveTargetTopic);
+                  setMoveTargetTopic(null);
+                }}
+                className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border border-indigo-100 dark:border-indigo-950 bg-indigo-50/30 dark:bg-indigo-950/20 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 text-xs font-bold text-indigo-600 dark:text-indigo-400 transition-all"
+              >
+                <ArrowRightLeft size={14} />
+                Move to Self-Learning Workspace
+              </button>
+            </div>
+
+            <div className="pt-4 flex justify-end shrink-0">
+              <button
+                onClick={() => setMoveTargetTopic(null)}
+                className="h-9 px-4 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-[10px] uppercase font-black tracking-widest transition-all"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
