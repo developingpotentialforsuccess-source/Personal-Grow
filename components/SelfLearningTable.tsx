@@ -595,7 +595,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
           updateTopic(selectedTopic.id, { content: cleanHtml });
         }
       }
-    }, 500);
+    }, 2000);
   };
 
   const exportPDF = async (customStyle?: 'executive' | 'handwritten' | 'minimalist' | 'academic' | 'retro' | 'medium_bg' | 'light_bg' | 'no_bg') => {
@@ -5484,8 +5484,11 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
       content = content.replace(/max-w-(xs|sm|md|lg|xl|2xl|3xl|4xl|5xl|6xl|7xl)/g, 'max-w-full');
       content = content.replace(/\bmx-auto\b/g, '');
 
-      if (editorRef.current.innerHTML !== content) {
-        if (document.activeElement !== editorRef.current) {
+      const currentClean = getCleanEditorHtml(editorRef.current.innerHTML);
+      const newClean = getCleanEditorHtml(content);
+      
+      if (currentClean !== newClean) {
+        if (!editorRef.current.contains(document.activeElement)) {
           editorRef.current.innerHTML = content;
           ensureTableSpacers(editorRef.current);
         }
