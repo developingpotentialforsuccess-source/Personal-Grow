@@ -499,7 +499,7 @@ export const RichTextDiv: React.FC<{
                 lastSavedValueRef.current = newValue;
                 onChange(newValue);
             }
-        }, 1200); // 1.2 second debounce keeps high frequency typing buttery smooth
+        }, 10000); // 10 second debounce ensures cloud sync only happens after active typing pauses
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLElement>) => {

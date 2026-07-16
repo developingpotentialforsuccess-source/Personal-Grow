@@ -595,7 +595,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
           updateTopic(selectedTopic.id, { content: cleanHtml });
         }
       }
-    }, 2000);
+    }, 10000);
   };
 
   const exportPDF = async (customStyle?: 'executive' | 'handwritten' | 'minimalist' | 'academic' | 'retro' | 'medium_bg' | 'light_bg' | 'no_bg') => {

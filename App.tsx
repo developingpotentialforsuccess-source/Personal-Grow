@@ -416,7 +416,7 @@ const App: React.FC = () => {
           setIsSyncing(false);
           isSyncingRef.current = false;
         }
-      }, 500); // Back to 500ms for "Google Docs" live feel, but with optimized Firestore parallel chunking
+      }, 10000); // Increased to 10s for uninterrupted typing, syncs after activity stops
       return () => clearTimeout(timer);
     }
   }, [data?.updatedAt, currentUser?.uid, loading, isSyncing]);

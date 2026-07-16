@@ -489,7 +489,7 @@ export const DPSSTable: React.FC<DPSSTableProps> = ({ data, onUpdate, onUpdateTo
           updateTopic(activeTopic.id, { content: cleanHtml });
         }
       }
-    }, 2000);
+    }, 10000);
   };
 
   const exportPDF = async (customStyle?: 'executive' | 'handwritten' | 'minimalist' | 'academic' | 'retro' | 'medium_bg' | 'light_bg' | 'no_bg') => {
