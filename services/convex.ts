@@ -1,4 +1,37 @@
 import LZString from 'lz-string';
+import CompressionWorker from './workers/compression?worker';
+const worker = new CompressionWorker();
+
+const asyncCompress = (payload: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const id = Date.now() + Math.random().toString();
+    const handler = (e: MessageEvent) => {
+      if (e.data.id === id) {
+        worker.removeEventListener('message', handler);
+        if (e.data.type === 'success') resolve(e.data.payload);
+        else reject(new Error(e.data.error));
+      }
+    };
+    worker.addEventListener('message', handler);
+    worker.postMessage({ id, type: 'compress', payload });
+  });
+};
+
+const asyncDecompress = (payload: string): Promise<string | null> => {
+  return new Promise((resolve, reject) => {
+    const id = Date.now() + Math.random().toString();
+    const handler = (e: MessageEvent) => {
+      if (e.data.id === id) {
+        worker.removeEventListener('message', handler);
+        if (e.data.type === 'success') resolve(e.data.payload);
+        else reject(new Error(e.data.error));
+      }
+    };
+    worker.addEventListener('message', handler);
+    worker.postMessage({ id, type: 'decompress', payload });
+  });
+};
+
 import { anyApi } from "convex/server";
 import { ConvexClient } from "convex/browser";
 import { storage as localIndexedDB } from './storage';
@@ -298,14 +331,14 @@ export const subscribeToData = (userId: string, onUpdate: (data: any) => void, o
              console.log(`[Convex] Fetching ${parsedRaw.totalChunks} chunks (Legacy Support)...`);
              const chunks = await (client as any).query(anyApi.dps.fetchDpsChunks, { userId, totalChunks: parsedRaw.totalChunks });
              const fullStr = chunks.join('');
-             const decompressed = LZString.decompressFromBase64(fullStr);
+             const decompressed = await asyncDecompress(fullStr);
              if (decompressed) {
                 cloudData = JSON.parse(decompressed);
              } else {
                 throw new Error("Failed to decompress legacy chunks");
              }
           } else if (parsedRaw && parsedRaw.isCompressed) {
-            const decompressed = LZString.decompressFromBase64(parsedRaw.payload);
+            const decompressed = await asyncDecompress(parsedRaw.payload);
             if (decompressed) {
               cloudData = JSON.parse(decompressed);
             } else {
@@ -352,7 +385,7 @@ export const fetchData = async (userId: string) => {
 
       const parsed = JSON.parse(rawData);
       if (parsed && parsed.isCompressed) {
-        const decompressed = LZString.decompressFromBase64(parsed.payload);
+        const decompressed = await asyncDecompress(parsed.payload);
         return decompressed ? JSON.parse(decompressed) : null;
       }
       return parsed;
@@ -380,7 +413,7 @@ export const saveData = async (userId: string, dataState: any, instant: boolean 
     const updatedAt = dataState.updatedAt || Date.now();
     const version = dataState.version || 1;
     
-    const compressed = LZString.compressToBase64(jsonStr);
+    const compressed = await asyncCompress(jsonStr);
     const payload = JSON.stringify({ isCompressed: true, payload: compressed });
     
     const LIMIT = 900000; // 0.9MB to be safe for document limit
@@ -449,7 +482,7 @@ export const processSyncQueue = async () => {
     const updatedAt = item.timestamp;
     const version = item.data.version || 1;
 
-    const compressed = LZString.compressToBase64(jsonStr);
+    const compressed = await asyncCompress(jsonStr);
     const payload = JSON.stringify({ isCompressed: true, payload: compressed });
     
     const LIMIT = 900000;
