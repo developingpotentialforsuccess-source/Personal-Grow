@@ -235,6 +235,10 @@ const App: React.FC = () => {
   const lastLocalUpdateRef = useRef<number>(0);
   const hasUnsavedChangesRef = useRef<boolean>(false);
   const isSyncingRef = useRef<boolean>(false);
+  const setSyncingStatus = (status: boolean) => {
+    isSyncingRef.current = status;
+    window.dispatchEvent(new CustomEvent("sync-status-change", { detail: status }));
+  };
   const data = dataLocal;
   const currentDataRef = useRef<AppData>(dataLocal);
   useEffect(() => {
@@ -361,7 +365,7 @@ const App: React.FC = () => {
   const lastSyncedUpdatedAtRef = useRef<number>(0);
   const isCloudLoadedRef = useRef(false);
 
-  const [isSyncing, setIsSyncing] = useState(false);
+  
 
   // Supabase Global Auto-Sync Hook
   useEffect(() => {
@@ -381,7 +385,7 @@ const App: React.FC = () => {
         const dataToSave = currentDataRef.current;
         const dataStr = JSON.stringify(dataToSave);
         
-        setIsSyncing(true);
+        setSyncingStatus(true);
         isSyncingRef.current = true;
         
         try {
@@ -413,13 +417,13 @@ const App: React.FC = () => {
         } catch (err) {
           console.error("Auto Sync Error:", err);
         } finally {
-          setIsSyncing(false);
+          setSyncingStatus(false);
           isSyncingRef.current = false;
         }
       }, 5000); // 5 second debounce ensures cloud sync only happens after active typing pauses (Evernote style)
       return () => clearTimeout(timer);
     }
-  }, [data?.updatedAt, currentUser?.uid, loading, isSyncing]);
+  }, [data?.updatedAt, currentUser?.uid, loading]);
 
   // Google Drive Auth status & On-Load Auto-Backup initialization
   useEffect(() => {
@@ -852,8 +856,8 @@ const App: React.FC = () => {
   }, [currentUser?.uid, isAuthInitializing]);
 
   const forceSync = async () => {
-    if (!currentUser?.uid || isSyncing) return;
-    setIsSyncing(true);
+    if (!currentUser?.uid || isSyncingRef.current) return;
+    setSyncingStatus(true);
     isSyncingRef.current = true;
     try {
       const { saveData } = await import("./services/convex");
@@ -869,7 +873,7 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Manual Sync Error:", err);
     } finally {
-      setIsSyncing(false);
+      setSyncingStatus(false);
       isSyncingRef.current = false;
     }
   };
@@ -1304,7 +1308,7 @@ const App: React.FC = () => {
           canRedo={redoStack.length > 0}
           onUndo={undo}
           onRedo={redo}
-          isSyncing={isSyncing}
+          
           onSyncNow={forceSync}
         />
 

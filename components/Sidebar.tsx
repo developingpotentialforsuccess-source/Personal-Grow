@@ -62,7 +62,7 @@ interface SidebarProps {
   canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
-  isSyncing?: boolean;
+  
   onSyncNow?: () => void;
 }
 
@@ -94,11 +94,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   canRedo,
   onUndo,
   onRedo,
-  isSyncing,
   onSyncNow
 }) => {
 
   const [isOnline, setIsOnline] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  useEffect(() => {
+    const handler = (e: CustomEvent) => setIsSyncing(e.detail);
+    window.addEventListener('sync-status-change', handler as EventListener);
+    return () => window.removeEventListener('sync-status-change', handler as EventListener);
+  }, []);
 
   useEffect(() => {
     const checkStatus = async () => {
