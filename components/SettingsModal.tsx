@@ -730,7 +730,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
           throw error;
         }
         if (!configured) {
-          alert("Account created successfully in Local Mode! To enable full cloud sync across devices, please configure VITE_CONVEX_URL in your hosting environment.");
+          alert("Account created successfully in Local Mode! To enable full cloud sync across devices, please make sure cloud variables are configured.");
         }
       } else {
         const { error } = await authService.auth.signInWithPassword({ email, password });
@@ -741,7 +741,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
           throw error;
         }
         if (!configured) {
-          alert("Signed in successfully in Local Mode! Note that cloud synchronization is disabled because VITE_CONVEX_URL is not configured.");
+          alert("Signed in successfully in Local Mode! Note that cloud synchronization is currently disabled.");
         }
       }
       // Do not call onLogin() here because onLogin maps to signInWithGoogle.
@@ -1068,7 +1068,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                            // @ts-ignore
                                            const { error } = await authS.auth.resetPassword(email);
                                            if (error) throw error;
-                                           alert("Password reset email sent! Please check your inbox and SPAM folder.\n\nNote: If you don't receive an email, it might be because this account doesn't exist in our new Convex system yet. Please try signing up again if you were previously a Supabase user.");
+                                           alert("Password reset email sent! Please check your inbox and SPAM folder.\n\nNote: If you don't receive an email, it might be because this account doesn't exist in our system yet. Please try signing up again with this email.");
                                          } catch (e: any) {
                                            setEmailError(e.message);
                                          } finally {
