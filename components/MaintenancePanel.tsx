@@ -352,17 +352,7 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
                                     </div>
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2.5 flex-wrap">
-                                            <h4 className="font-black text-slate-800 uppercase text-sm md:text-base tracking-tight leading-none">Convex Cloud Database</h4>
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                              <span className="text-[8px] md:text-[9px] font-bold text-slate-400 bg-white border border-slate-100 px-2 py-0.5 rounded whitespace-nowrap">
-                                                Engine: {getFirebaseProjectId()}
-                                              </span>
-                                              {currentUser?.uid && (
-                                                <span className="text-[8px] md:text-[9px] font-bold text-slate-400 bg-white border border-slate-100 px-2 py-0.5 rounded whitespace-nowrap">
-                                                  Auth: {currentUser.uid.substring(0, 8)}...
-                                                </span>
-                                              )}
-                                            </div>
+                                            <h4 className="font-black text-slate-800 uppercase text-sm md:text-base tracking-tight leading-none">Cloud Backup Database</h4>
                                             {syncStatus.connected ? (
                                                 <span className="flex items-center gap-1.5 text-[8px] md:text-[9px] font-black text-emerald-600 bg-emerald-100/80 px-2.5 py-1 rounded-full uppercase tracking-wider animate-pulse whitespace-nowrap">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -382,19 +372,12 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
                                         </div>
                                         <p className="text-xs text-slate-500 font-medium">
                                             {syncStatus.connected 
-                                                ? "Your master digital portal sheets, topics, and student ledger are actively saved in Convex Cloud. Real-time multi-browser sync is enabled."
+                                                ? "Your master digital portal sheets, topics, and student ledger are actively saved in the cloud. Real-time multi-browser sync is enabled."
                                                 : !syncStatus.configured 
-                                                    ? "Connected to reactive local database storage. Please configure Convex to synchronize records globally."
-                                                    : `An issue occurred while reaching your Convex project: ${syncStatus.error}`
+                                                    ? "Connected to reactive local database storage. Please configure cloud synchronization to access records globally."
+                                                    : `An issue occurred while reaching the cloud database: ${syncStatus.error}`
                                             }
                                         </p>
-                                        
-                                        <div className="mt-3 p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-1.5 shadow-sm">
-                                          <h5 className="text-[10px] font-black text-indigo-900 uppercase tracking-wider">Vercel & Deployment Sync Notice</h5>
-                                          <p className="text-[9px] text-indigo-700 leading-relaxed font-bold">
-                                            If redeploying on Vercel, ensure you include your <span className="text-indigo-900 underline decoration-indigo-300">VITE_CONVEX_URL</span> environment variable. 
-                                          </p>
-                                        </div>
                                     </div>
                                 </div>
                                 <button 
@@ -406,31 +389,6 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
                                     {checkingSync ? "Pinging..." : "Test Link"}
                                 </button>
                             </div>
-
-                            {!syncStatus.connected && (
-                                <div className="p-6 bg-slate-100/50 rounded-3xl border border-slate-200/60 text-xs text-slate-600 space-y-5">
-                                    <div className="flex items-center gap-2 text-rose-800 font-bold uppercase tracking-widest text-[11px]">
-                                        <Sparkles size={14} className="text-orange-500" />
-                                        ⚡ Convex Cloud Sync Setup
-                                    </div>
-
-                                    <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl space-y-3">
-                                        <p className="font-bold text-orange-950 text-xs leading-snug underline">👉 CRITICAL Convex Setup:</p>
-                                        <p className="text-[10px] text-orange-900 font-medium leading-relaxed">
-                                          Ensure your Convex Deployment URL is added as <code className="font-bold">VITE_CONVEX_URL</code> in your environment variables.
-                                        </p>
-                                    </div>
-
-                                    <div className="text-slate-800 font-bold uppercase tracking-wide text-[10px]">
-                                        🛠️ Vercel / Hosting Deployment Steps
-                                    </div>
-                                    <ul className="list-disc list-inside space-y-2 pl-1 leading-relaxed text-[11px] font-medium text-slate-500">
-                                        <li>Go to your **Vercel or hosting Dashboard**.</li>
-                                        <li>Add <code className="font-mono text-xs bg-white px-1.5 py-0.5 rounded border border-slate-200">VITE_CONVEX_URL</code> with your Convex Cloud URL.</li>
-                                        <li>Deploy your backend functions to Convex via your linked repository or CLI.</li>
-                                    </ul>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -656,13 +614,13 @@ export const MaintenancePanel: React.FC<Props> = ({ data, onUpdate, currentUser 
                             </div>
                         </div>
 
-                        {/* Thin Database Notice */}
-                        <div className="p-6 bg-amber-50/40 border border-amber-200/50 rounded-3xl flex items-start gap-4">
-                            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={20} />
+                        {/* Device-to-Device Optimization Status */}
+                        <div className="p-6 bg-emerald-50/40 border border-emerald-200/50 rounded-3xl flex items-start gap-4">
+                            <Cloud className="text-emerald-500 shrink-0 mt-0.5" size={20} />
                             <div>
-                                <h5 className="text-xs font-black text-amber-950 uppercase tracking-wider">Device-to-Device Optimization Status: ACTIVE</h5>
-                                <p className="text-[11px] text-amber-900 leading-relaxed font-semibold mt-1">
-                                    Linking Google Drive automatically redirects massive attachments (pictures, PDFs, or videos up to 20 MB) directly to cloud storage rather than bloating your central Convex database. This ensures instant device syncing, zero memory slowdowns, and maximum cross-device stability.
+                                <h5 className="text-xs font-black text-emerald-950 uppercase tracking-wider">Device-to-Device Optimization: ACTIVE</h5>
+                                <p className="text-[11px] text-emerald-900 leading-relaxed font-semibold mt-1">
+                                    Cloud storage handles large attachments (pictures, PDFs, or videos) directly, ensuring instant synchronization across all your devices with maximum speed and stability.
                                 </p>
                             </div>
                         </div>

@@ -212,9 +212,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onClick={onSyncNow}
                       disabled={isSyncing || !isOnline || !currentUser?.uid}
                       className={`text-[8px] font-black leading-none uppercase transition-all hover:scale-105 active:scale-95 disabled:hover:scale-100 ${isSyncing ? 'text-blue-600' : isOnline && currentUser?.uid && isConvexConfigured() ? 'text-emerald-600 cursor-pointer' : 'text-amber-600/90'}`} 
-                      title={isSyncing ? "Syncing..." : isOnline && currentUser?.uid && isConvexConfigured() ? "Cloud Online (Click to Force Sync)" : "Local / Offline"}
+                      title={isSyncing ? "Synchronizing..." : isOnline && currentUser?.uid && isConvexConfigured() ? "Cloud Backup Active (Click to Force Sync)" : "Device Storage Only"}
                     >
-                      {isSyncing ? 'Syncing...' : isOnline && currentUser?.uid && isConvexConfigured() ? 'Online' : 'Local'}
+                      {isSyncing ? 'Syncing...' : isOnline && currentUser?.uid && isConvexConfigured() ? 'Live Backup' : 'Offline'}
                     </button>
                   </div>
                 </div>

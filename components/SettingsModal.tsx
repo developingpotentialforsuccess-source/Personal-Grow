@@ -229,7 +229,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
       setSyncStatus({ 
         configured, 
         connected, 
-        error: !configured ? "Environment variables missing." : (connected ? null : "Could not reach Convex Cloud.")
+        error: !configured ? "Configuration missing." : (connected ? null : "Could not reach cloud server.")
       });
     } catch (err: any) {
       setSyncStatus({ configured: false, connected: false, error: err.message || String(err) });
@@ -866,37 +866,6 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                               </p>
                               {currentUser?.email && <p className="text-[10px] font-bold text-orange-600 mb-1 break-all tracking-tight">{currentUser.email}</p>}
                               
-                              {/* Connection Status Details Panel */}
-                              <div className="mt-3 text-xs border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-left space-y-2 w-full font-sans">
-                                <div className="flex justify-between items-center gap-2">
-                                  <span className="font-bold text-slate-500 text-[9px] uppercase tracking-wider">Cloud Engine:</span>
-                                  <span className="font-mono text-[9px] text-slate-600 bg-white px-1.5 py-0.5 border border-slate-100 rounded select-all max-w-[170px] truncate" title={getConvexUrl()}>{getConvexUrl()}</span>
-                                </div>
-                                <div className="flex justify-between items-center gap-2">
-                                  <span className="font-bold text-slate-500 text-[9px] uppercase tracking-wider">Sync State:</span>
-                                  {checkingSync ? (
-                                    <span className="text-[9px] font-black text-amber-600 animate-pulse uppercase tracking-wider">Pinging...</span>
-                                  ) : syncStatus.connected ? (
-                                    <span className="text-[9px] font-black text-emerald-600 flex items-center gap-1 uppercase tracking-wider">● Connected</span>
-                                  ) : (
-                                    <span className="text-[9px] font-black text-rose-500 flex items-center gap-1 uppercase tracking-wider">● Offline</span>
-                                  )}
-                                </div>
-                                
-                                {!checkingSync && !syncStatus.connected && (
-                                  <div className="mt-2 border-t border-red-100/50 pt-2 text-[10px] text-red-700 leading-relaxed font-bold bg-red-50/40 p-2 rounded-lg">
-                                    <span className="font-black block text-[8px] uppercase tracking-wider text-rose-800 mb-0.5">Diagnostic Error:</span>
-                                    {syncStatus.error || "Failed to reach Convex Cloud. Make sure your server functions are deployed."}
-                                    <button 
-                                      onClick={checkSyncStatus}
-                                      className="mt-2 w-full py-1 text-[9px] uppercase tracking-wider border border-slate-250 bg-white hover:bg-slate-50 text-slate-800 font-black rounded-md transition-colors"
-                                    >
-                                      Re-Test Connection
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-
                               <p className="text-xs text-slate-500 leading-relaxed mt-3 mb-4">
                                 {syncStatus.connected ? "Your data is successfully synchronizing live!" : "Synchronization is paused until cloud connectivity is restored."}
                                 {lastSyncedTime && syncStatus.connected && (
@@ -925,7 +894,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                               <p className="text-sm font-black text-slate-800 mb-1">Local Profile</p>
                               {currentUser?.email && <p className="text-[10px] font-bold text-orange-600 mb-1 break-all tracking-tight">{currentUser.email}</p>}
                               <p className="text-xs text-slate-500 leading-relaxed mb-4 text-center px-4">
-                                Cloud sync is disabled because <code className="font-bold text-slate-750 bg-slate-100 px-1 py-0.5 rounded">VITE_CONVEX_URL</code> is not configured. Your data is stored locally in this browser.
+                                Cloud sync is disabled. Your data is stored locally in this browser.
                               </p>
                               <button 
                                 onClick={onLogout}
@@ -944,9 +913,9 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                           <div>
                             <p className="text-sm font-black text-slate-800 mb-1">Local Mode</p>
                             <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                              Your data is only stored in this browser. {isConvexConfigured() ? "Please sign in to sync." : "To enable cloud sync, please configure VITE_CONVEX_URL in your hosting environment."}
+                              Your data is only stored in this browser. {isConvexConfigured() ? "Please sign in to sync." : "Cloud sync is currently unavailable."}
                               <br />
-                              <span className="text-[10px] text-orange-600 font-bold italic block mt-1">Note: We recently switched to Convex Cloud. Please Sign Up again if you haven't yet on this new version.</span>
+                              <span className="text-[10px] text-orange-600 font-bold italic block mt-1">Note: We recently updated our cloud system. Please Sign Up again if you haven't yet on this new version.</span>
                             </p>
                              {emailError && (
                                <div className="mb-4 bg-red-50 text-red-650 border border-red-200 p-4 rounded-xl text-xs font-semibold text-left leading-relaxed shadow-sm">
@@ -1161,10 +1130,7 @@ export const SettingsModal: React.FC<Props> = ({ isOpen, onClose, settings, onUp
                                    </div>
 
                                    <div className="pt-2 text-center text-[10px] text-slate-500 font-medium">
-                                      <p>Manage your database and authentication in Convex:</p>
-                                      <div className="flex gap-2 justify-center mt-1">
-                                        <a href="https://dashboard.convex.dev" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">Convex Dashboard</a>
-                                      </div>
+                                       <p>Your account is managed securely.</p>
                                    </div>
                                 </div>
                           </div>

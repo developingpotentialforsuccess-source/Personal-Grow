@@ -1,4 +1,5 @@
 import LZString from 'lz-string';
+// @ts-expect-error - Vite worker import
 import CompressionWorker from './workers/compression?worker';
 const worker = new CompressionWorker();
 
