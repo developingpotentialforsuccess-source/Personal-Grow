@@ -416,7 +416,7 @@ const App: React.FC = () => {
           setIsSyncing(false);
           isSyncingRef.current = false;
         }
-      }, 10000); // Increased to 10s for uninterrupted typing, syncs after activity stops
+      }, 5000); // 5 second debounce ensures cloud sync only happens after active typing pauses (Evernote style)
       return () => clearTimeout(timer);
     }
   }, [data?.updatedAt, currentUser?.uid, loading, isSyncing]);
@@ -981,22 +981,15 @@ const App: React.FC = () => {
   };
 
   const handleUpdateStudent = async (id: string, updates: Partial<Student>) => {
-    let updatedStudent: Student | undefined;
     handleUpdate((prev) => {
       const updatedStudents = prev.students.map((s) => {
         if (s.id === id) {
-          updatedStudent = { ...s, ...updates };
-          return updatedStudent;
+          return { ...s, ...updates };
         }
         return s;
       });
       return { ...prev, students: updatedStudents };
     });
-
-    if (currentUser?.uid && updatedStudent) {
-      const { saveStudent } = await import("./services/convex");
-      saveStudent(currentUser.uid, updatedStudent);
-    }
   };
 
   const handleUpdateTopic = async (
@@ -1009,11 +1002,6 @@ const App: React.FC = () => {
         ? { ...prev, dpssTopics: updatedTopics }
         : { ...prev, selfLearningTopics: updatedTopics };
     });
-
-    if (currentUser?.uid && topicToSave) {
-      const { saveTopic } = await import("./services/convex");
-      saveTopic(currentUser.uid, topicToSave, category);
-    }
   };
 
   const handleUpdateDailyNote = async (date: string, content: string) => {
@@ -1021,11 +1009,6 @@ const App: React.FC = () => {
       const newDailyNotes = { ...(prev.dailyNotes || {}), [date]: content };
       return { ...prev, dailyNotes: newDailyNotes };
     });
-
-    if (currentUser?.uid) {
-      const { saveDailyNote } = await import("./services/convex");
-      saveDailyNote(currentUser.uid, date, content);
-    }
   };
 
   const handleUpdateJournalEntry = async (
@@ -1039,11 +1022,6 @@ const App: React.FC = () => {
       };
       return { ...prev, journalEntries: newJournalEntries };
     });
-
-    if (currentUser?.uid) {
-      const { saveJournalEntry } = await import("./services/convex");
-      saveJournalEntry(currentUser.uid, date, entry);
-    }
   };
 
   const handleUpdateHabitCompletion = async (
@@ -1051,21 +1029,15 @@ const App: React.FC = () => {
     habitId: string,
     completed: boolean | number,
   ) => {
-    let newCompletions: any;
     handleUpdate((prev) => {
       const completions = prev.habitCompletions || {};
       const dayCompletions = {
         ...(completions[date] || {}),
         [habitId]: completed,
       };
-      newCompletions = { ...completions, [date]: dayCompletions };
+      const newCompletions = { ...completions, [date]: dayCompletions };
       return { ...prev, habitCompletions: newCompletions };
     });
-
-    if (currentUser?.uid && newCompletions) {
-      const { saveHabitCompletionBulk } = await import("./services/convex");
-      saveHabitCompletionBulk(currentUser.uid, date, newCompletions[date]);
-    }
   };
 
   const handleUpdateExpense = async (
@@ -1088,11 +1060,6 @@ const App: React.FC = () => {
       }
       return { ...prevData, expenses: newExpenses };
     });
-
-    if (currentUser?.uid) {
-      const { saveExpense } = await import("./services/convex");
-      await saveExpense(currentUser.uid, expense, isDelete);
-    }
   };
 
   const undo = () => {
@@ -1367,14 +1334,14 @@ const App: React.FC = () => {
         <SupermanAnimation students={data.students} />
 
         <main
-          className={`flex-1 flex flex-col ${[Tab.SelfLearning, Tab.DPSS].includes(activeTab) ? 'overflow-hidden' : 'overflow-y-auto'} md:overflow-hidden transition-transform duration-300 origin-top-left bg-white/[0.01] backdrop-blur-md`}
+          className={`flex-1 flex flex-col ${[Tab.SelfLearning, Tab.DPSS, Tab.DailyPerformanceCheck].includes(activeTab) ? 'overflow-hidden' : 'overflow-y-auto'} md:overflow-hidden transition-transform duration-300 origin-top-left bg-white/[0.01] backdrop-blur-md`}
           style={{
             transform: `scale(${globalScale})`,
             width: `${100 / globalScale}%`,
             height: `${100 / globalScale}%`,
           }}
         >
-          <div className={`flex-1 flex flex-col ${[Tab.SelfLearning, Tab.DPSS].includes(activeTab) ? 'pt-0' : 'pt-16 md:pt-0'} overflow-visible md:overflow-hidden h-full min-h-0 w-full`}>
+          <div className={`flex-1 flex flex-col ${[Tab.SelfLearning, Tab.DPSS, Tab.DailyPerformanceCheck].includes(activeTab) ? 'pt-0' : 'pt-16 md:pt-0'} overflow-visible md:overflow-hidden h-full min-h-0 w-full`}>
             <>
               {activeTab === Tab.AdvancedHabitTracker && (
                 <AdvancedHabitTracker data={data} onUpdate={handleUpdate} />

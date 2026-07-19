@@ -499,7 +499,7 @@ export const RichTextDiv: React.FC<{
                 lastSavedValueRef.current = newValue;
                 onChange(newValue);
             }
-        }, 10000); // 10 second debounce ensures cloud sync only happens after active typing pauses
+        }, 5000); // 5 second debounce ensures cloud sync only happens after active typing pauses
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLElement>) => {

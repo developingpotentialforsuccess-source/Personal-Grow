@@ -5189,10 +5189,11 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
           }}
           onClick={() => {
             setSelectedTopicId(topic.id);
-            setIsSidebarOpen(false); // Close sidebar to show writing page
             setOpenMenuId(null);
             if (hasChildren) {
               setExpandedTopics(prev => ({ ...prev, [topic.id]: !prev[topic.id] }));
+            } else {
+              setIsSidebarOpen(false); // Close sidebar to show writing page
             }
           }} 
           className={`relative group flex items-center justify-between p-2 my-1 rounded-xl cursor-pointer border transition-all select-none ${openMenuId === topic.id ? 'z-[100]' : 'z-10'} ${
@@ -7464,7 +7465,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                       .visible-sidebar-scrollbar {
                         scrollbar-width: auto !important;
                         scrollbar-color: rgba(16, 185, 129, 0.45) rgba(0, 0, 0, 0.02) !important;
-                        overflow-y: scroll !important;
+                        overflow-y: auto !important;
                         -webkit-overflow-scrolling: touch !important;
                       }
                       .visible-sidebar-scrollbar::-webkit-scrollbar {
@@ -7485,7 +7486,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                       }
 
                       .custom-scrollbar {
-                        overflow-y: scroll !important;
+                        overflow-y: auto !important;
                         -webkit-overflow-scrolling: auto !important;
                       }
                       .custom-scrollbar::-webkit-scrollbar {
@@ -7511,7 +7512,7 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                       }
 
                       .editor-scrollbar {
-                        overflow-y: scroll !important;
+                        overflow-y: auto !important;
                         -webkit-overflow-scrolling: touch !important;
                       }
                       .editor-scrollbar::-webkit-scrollbar {
@@ -8003,8 +8004,8 @@ export const SelfLearningTable: React.FC<SelfLearningTableProps> = ({ data, onUp
                 })()}
 
                 {/* Relative Wrapper for Editor + Ruler Guides */}
-                  <div className="relative flex flex-col w-full flex-1 min-h-0 overflow-y-auto overflow-x-auto editor-scrollbar" dir="rtl">
-                    <div dir="ltr" className="flex flex-col flex-1 min-w-full relative">
+                  <div className="relative flex flex-col w-full flex-1 min-h-0 overflow-y-auto overflow-x-auto editor-scrollbar">
+                    <div className="flex flex-col flex-1 min-w-full relative">
                   
                   {/* Modern Word-style Horizontal Page Ruler */}
                   {showRuler && (

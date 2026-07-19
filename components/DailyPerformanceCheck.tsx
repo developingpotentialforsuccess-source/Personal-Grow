@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2pdf from 'html2pdf.js';
 import { toPng } from 'html-to-image';
@@ -44,6 +44,48 @@ interface DailyPerformanceCheckProps {
   setFilters?: (filters: FilterState) => void;
   role?: UserRole;
 }
+
+const DebouncedInput: React.FC<{
+  value: string;
+  onChange: (val: string) => void;
+  className?: string;
+  placeholder?: string;
+  style?: React.CSSProperties;
+}> = ({ value, onChange, className, placeholder, style }) => {
+  const [localValue, setLocalValue] = useState(value);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = (val: string) => {
+    setLocalValue(val);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      onChange(val);
+    }, 500); // 500ms debounce for UI responsiveness vs sync
+  };
+
+  const handleBlur = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (localValue !== value) {
+      onChange(localValue);
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      value={localValue}
+      onChange={(e) => handleChange(e.target.value)}
+      onBlur={handleBlur}
+      className={className}
+      placeholder={placeholder}
+      style={style}
+    />
+  );
+};
 
 const PRESET_COLORS = [
   { name: 'Vibrant Orange', value: '#f97316' },
@@ -992,10 +1034,13 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({
   const tomorrowProgressPct = tomorrowTotalCount > 0 ? Math.round((tomorrowCompletedCount / tomorrowTotalCount) * 100) : 0;
 
   return (
-    <div className="flex-1 overflow-y-auto p-2 md:p-6 lg:p-8 space-y-6 text-stone-800" id="daily-performance-tracker-container">
+    <div 
+      className={`flex-1 flex flex-col p-2 md:p-6 lg:p-8 text-stone-800 h-full min-h-0 ${activeSubTab === 'Reminder' ? '!pb-0 !px-0 overflow-y-auto' : 'overflow-y-auto'}`} 
+      id="daily-performance-tracker-container"
+    >
       
       {/* 1. Header Navigation Switcher: Daily, Tomorrow, and Reminder */}
-      <div className="flex bg-orange-100/40 p-1 mb-2 border border-orange-200/50 rounded-2xl w-full max-w-lg md:max-w-2xl mx-auto shadow-sm md:p-1.5 md:mb-6">
+      <div className="flex bg-orange-100/40 p-1 mb-4 md:mb-6 border border-orange-200/50 rounded-2xl w-full max-w-lg md:max-w-2xl mx-auto shadow-sm md:p-1.5 shrink-0">
         {(['Daily', 'Tomorrow', 'Reminder'] as const).map((tab) => {
           let tabIcon = <Calendar className="w-3.5 h-3.5 md:w-4.5 md:h-4.5" />;
           if (tab === 'Tomorrow') tabIcon = <Sparkles className="w-3.5 h-3.5 md:w-4.5 md:h-4.5" />;
@@ -1020,159 +1065,9 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({
 
       {/* 2. Sub-tab Content: Daily planning */}
       {activeSubTab === 'Daily' && (
-        <div ref={dpcRef} className="space-y-4 animate-in fade-in duration-150">
-          <div className="md:bg-white md:rounded-3xl md:border md:border-stone-200 md:shadow-sm md:overflow-hidden">
-            {/* Desktop Checklist Table: Generously spaced & larger for PC view */}
-            <div className="hidden md:block overflow-x-auto mobile-a4-wrapper">
-              <div className="a4-container shadow-none min-h-full">
-                <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-stone-200 bg-stone-50/50">
-                    <th className="py-4 px-6 text-left text-[11px] md:text-xs font-black text-stone-500 uppercase tracking-widest min-w-[200px]">
-                      Task Name & Urgency
-                    </th>
-                    {daysOfWeek.map((day) => {
-                      const isToday = isSameDay(day, new Date());
-                      return (
-                        <th key={day.toString()} className="py-4 px-3 text-center text-[10px] md:text-[11px] font-black uppercase tracking-wider w-20 md:w-24">
-                          <div className="flex flex-col items-center gap-1">
-                            <span className={`text-[10px] md:text-xs ${isToday ? 'text-orange-600 font-extrabold scale-105' : 'text-stone-400'}`}>
-                              {format(day, 'EEE').toUpperCase()}
-                            </span>
-                            <span className={`text-[11px] md:text-sm font-black ${
-                              isToday ? 'text-orange-600 bg-orange-50 px-2 rounded-lg border border-orange-200/50' : 'text-stone-600'
-                            }`}>
-                              {format(day, 'd')}
-                            </span>
-                          </div>
-                        </th>
-                      );
-                    })}
-                    <th className="py-4 px-4 text-center text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-wider w-16">
-                      Del
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-150">
-                  {filteredAndSortedTasks.map((task) => (
-                    <tr key={task.id} className="hover:bg-stone-50/20 transition-colors">
-                      <td className="py-4 px-6">
-                        {editingTaskId === task.id ? (
-                          <div className="flex items-center gap-2 max-w-sm animate-in zoom-in-95 duration-100">
-                            <input
-                              type="text"
-                              value={editingName}
-                              onChange={(e) => setEditingName(e.target.value)}
-                              className="px-2 py-1 bg-white border border-stone-200 rounded-lg text-xs font-bold text-stone-800 outline-none w-full"
-                              autoFocus
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveTaskEdit(task.id);
-                                if (e.key === 'Escape') setEditingTaskId(null);
-                              }}
-                            />
-                            <button
-                              onClick={() => handleSaveTaskEdit(task.id)}
-                              className="p-1 px-2.5 bg-orange-500 text-white rounded-lg text-[9px] font-black uppercase"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingTaskId(null)}
-                              className="p-1 px-2 text-stone-400 rounded-lg text-[9px] font-black uppercase hover:bg-stone-100"
-                            >
-                              x
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between group/task cursor-pointer py-1.5">
-                            <div className="flex items-center gap-2.5">
-                              <span 
-                                className="w-3.5 h-3.5 rounded-full ring-2 shadow-xs ring-white shrink-0" 
-                                style={{ backgroundColor: task.color, boxShadow: `0 2px 6px ${task.color}40` }}
-                              />
-                              <span 
-                                onClick={() => {
-                                  const now = Date.now();
-                                  const lastTime = taskClickTimesRef.current[task.id] || 0;
-                                  if (now - lastTime < 350) {
-                                    setEditingTaskId(task.id);
-                                    setEditingName(task.name);
-                                    setEditingColor(task.color);
-                                    setEditingPriority(task.priority || 'Medium');
-                                  }
-                                  taskClickTimesRef.current[task.id] = now;
-                                }}
-                                onDoubleClick={() => {
-                                  setEditingTaskId(task.id);
-                                  setEditingName(task.name);
-                                  setEditingColor(task.color);
-                                  setEditingPriority(task.priority || 'Medium');
-                                }}
-                                title="Double-click or double-tap to edit task details"
-                                className="font-extrabold text-xs md:text-sm lg:text-[15px] text-stone-750 tracking-tight hover:text-orange-605 hover:text-orange-600 transition-colors select-none"
-                              >
-                                {task.name}
-                              </span>
-                              <span className={`px-2 py-0.5 rounded-full text-[8.5px] md:text-[9.5px] font-black uppercase tracking-wider ${
-                                task.priority === 'High' ? 'bg-rose-50 text-rose-600 border border-rose-105/50' :
-                                task.priority === 'Medium' ? 'bg-amber-50 text-amber-600 border border-amber-105/50' :
-                                'bg-purple-50 text-purple-600 border border-purple-105/50'
-                              }`}>
-                                {task.priority || 'Medium'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </td>
-
-                      {daysOfWeek.map((day) => {
-                        const dateStr = format(day, 'yyyy-MM-dd');
-                        const isCompleted = completions[dateStr]?.[task.id] || false;
-                        const isToday = isSameDay(day, new Date());
-                        return (
-                          <td key={day.toString()} className="text-center py-3.5 px-1.5">
-                            <button
-                              onClick={() => toggleCompletion(dateStr, task.id)}
-                              className="focus:outline-none block mx-auto cursor-pointer p-0.5 hover:scale-105 active:scale-95 transition-transform"
-                              title={`${isCompleted ? 'Completed' : 'Not completed'}: ${task.name}`}
-                            >
-                              {renderChecklistSymbol(
-                                dailyPerformanceSymbol,
-                                isCompleted,
-                                isToday,
-                                task.color,
-                                false
-                              )}
-                            </button>
-                          </td>
-                        );
-                      })}
-
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="p-1.5 text-stone-300 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors"
-                          title="Delete task"
-                        >
-                          <Trash size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredAndSortedTasks.length === 0 && (
-                    <tr>
-                      <td colSpan={9} className="py-12 text-center text-xs md:text-sm font-bold text-stone-400 tracking-wide uppercase">
-                        No duties listed. Reset to default to list standard duties.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            </div>
-
-            {/* Mobile checklist grid: premium, spaced card-like list */}
-            <div className="block md:hidden space-y-4 py-2 px-1">
+        <div ref={dpcRef} className="flex-1 flex flex-col space-y-4 animate-in fade-in duration-150 overflow-y-auto custom-scrollbar pr-1">
+          
+            <div className="space-y-4 py-2 px-1">
               {filteredAndSortedTasks.map(task => {
                 const isEditing = editingTaskId === task.id;
                 return (
@@ -1477,13 +1372,252 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({
                 ☀️ Soft peach & emerald eye-friendly themes (No blue & black)
               </p>
             </div>
+
+            {/* 5. Space-saving Collapsible bottom elements defaults to HIDDEN */}
+            <div className="space-y-4 pt-4 pb-16">
+              {/* Toggle bar for secondary settings and trends */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-stone-50 border border-stone-200/60 rounded-3xl p-3 px-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span className="px-2.5 py-1 bg-orange-500 text-white rounded-lg text-[10px] font-black uppercase font-mono tracking-wider w-fit">
+                    SECONDARY SETUP
+                  </span>
+                  <span className="text-xs text-stone-500 font-bold">
+                    Secondary details and week navigations
+                  </span>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setIsActionBarCollapsed(!isActionBarCollapsed)}
+                    className={`py-2 px-3.5 text-xs rounded-xl font-black uppercase tracking-wider transition-all border flex items-center gap-1.5 ${
+                      !isActionBarCollapsed 
+                        ? 'bg-orange-500 text-white border-transparent shadow-sm' 
+                        : 'bg-white hover:bg-stone-100 text-stone-600 border-stone-200'
+                    }`}
+                  >
+                    <SlidersHorizontal size={12} />
+                    <span>{!isActionBarCollapsed ? 'Hide setups' : 'Show setup controls'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowTrend(!showTrend)}
+                    className={`py-2 px-3.5 text-xs rounded-xl font-black uppercase tracking-wider transition-all border flex items-center gap-1.5 ${
+                      showTrend 
+                        ? 'bg-orange-500 text-white border-transparent shadow-sm' 
+                        : 'bg-white hover:bg-stone-100 text-stone-600 border-stone-200'
+                    }`}
+                    title="7-Day compliance trends collapsed to save layout vertical space"
+                  >
+                    <span>📊</span>
+                    <span>{showTrend ? 'Hide trends' : 'Show trend charts'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Persistent Week Navigation bar (Number Two) */}
+              {!isActionBarCollapsed && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="bg-white rounded-3xl p-5 border border-stone-200/80 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden animate-in zoom-in-95 duration-150"
+                >
+                  <div className="flex items-center gap-1.5 shrink-0 w-full sm:w-auto justify-between sm:justify-start">
+                    <button 
+                      onClick={() => navigateWeek('prev')}
+                      className="p-2 bg-white hover:bg-stone-100 rounded-xl border border-stone-200 active:scale-95 transition-all text-stone-600"
+                      title="Previous Week"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    
+                    <div className="px-4 py-2 bg-stone-50 rounded-xl border border-stone-200 text-xs font-black text-stone-700 tracking-wider uppercase min-w-[160px] text-center shadow-inner">
+                      {format(daysOfWeek[0], 'MMM dd')} - {format(daysOfWeek[6], 'MMM dd, yyyy')}
+                    </div>
+
+                    <button 
+                      onClick={() => navigateWeek('next')}
+                      className="p-2 bg-white hover:bg-stone-100 rounded-xl border border-stone-200 active:scale-95 transition-all text-stone-600"
+                      title="Next Week"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
+                    <button 
+                      onClick={goToCurrentWeek}
+                      className="px-3.5 py-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 font-extrabold text-xs tracking-wider uppercase rounded-xl border border-orange-100 shadow-xs transition-all active:scale-95"
+                    >
+                      Back To Current Week
+                    </button>
+
+                    <button 
+                      onClick={() => setShowOverview(!showOverview)}
+                      className={`px-3.5 py-2.5 rounded-xl border font-extrabold text-xs tracking-wider uppercase shadow-xs transition-all active:scale-95 flex items-center gap-1.5 ${
+                        showOverview 
+                          ? 'bg-amber-50 border-amber-300 text-amber-800' 
+                          : 'bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100'
+                      }`}
+                    >
+                      <Clock size={13} />
+                      <span>{showOverview ? 'Hide YTD Stats' : 'YTD compliance'}</span>
+                    </button>
+
+                    <button 
+                      onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+                      className="px-3.5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-extrabold text-xs tracking-wider uppercase rounded-xl border border-stone-200 shadow-xs transition-all flex items-center gap-1.5"
+                    >
+                      {isHeaderCollapsed ? "Show Info Card" : "Hide Info Card"}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* 7-Day progress visual trends bar chart */}
+              {showTrend && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="bg-white rounded-3xl p-5 border border-stone-200 shadow-sm animate-in fade-in duration-150"
+                >
+                  <div className="flex items-center justify-between mb-4 pl-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 text-[10px] font-black uppercase text-orange-700 bg-orange-50 border border-orange-100 rounded-lg">
+                        Discipline Velocity
+                      </span>
+                      <h3 className="text-xs font-black text-stone-800 uppercase tracking-widest">
+                        7-Day Completion Trend Check (%)
+                      </h3>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-7 gap-2 pt-1">
+                    {last7DaysStats.map((stat, i) => (
+                      <div key={i} className="flex flex-col items-center group/trend relative">
+                        {/* Tooltip on hover */}
+                        <div className="absolute -top-10 scale-0 group-hover/trend:scale-100 transition-all bg-stone-800 text-white font-bold py-1 px-2.5 rounded-lg text-[9px] pointer-events-none z-10 shadow-md uppercase tracking-wider min-w-[80px] text-center">
+                          {stat.count}/{stat.total} ({stat.percentage}%)
+                        </div>
+
+                        {/* Date labels on top */}
+                        <div className="mb-2 text-center">
+                          <p className={`text-[10px] font-black uppercase tracking-wider ${
+                            stat.isToday ? 'text-orange-600' : 'text-stone-400'
+                          }`}>
+                            {stat.dateLabel.split(' ')[0]}
+                          </p>
+                          <p className="text-xs font-bold text-stone-600">
+                            {stat.dateLabel.split(' ')[1]}
+                          </p>
+                        </div>
+
+                        {/* The dynamic bar container */}
+                        <div className="w-full bg-stone-50 border border-stone-100/80 rounded-2xl h-24 relative overflow-hidden flex items-end shadow-inner">
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: `${stat.percentage}%` }}
+                            transition={{ duration: 0.5 }}
+                            className={`w-full rounded-b-xl transition-all ${
+                              stat.isToday 
+                                ? 'bg-gradient-to-t from-orange-400 to-orange-500' 
+                                : stat.percentage === 100 
+                                  ? 'bg-emerald-500' 
+                                  : stat.percentage >= 50 
+                                    ? 'bg-amber-400' 
+                                    : 'bg-fuchsia-400'
+                            }`}
+                          />
+                          <div className="absolute inset-x-0 bottom-2 flex justify-center pointer-events-none">
+                            <span className={`text-[10px] font-black ${
+                              stat.percentage > 30 ? 'text-white drop-shadow' : 'text-stone-500'
+                            }`}>
+                              {stat.percentage}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* YTD compliance statistics panel */}
+              {showOverview && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="bg-stone-50/50 rounded-3xl p-5 border border-stone-200 shadow-inner grid grid-cols-1 md:grid-cols-2 gap-4"
+                >
+                  <div className="bg-white rounded-2xl p-4 border border-stone-150 flex items-center gap-3 shadow-xs">
+                    <span className="p-2.5 bg-orange-50 text-orange-600 rounded-xl shrink-0">
+                      <Flame size={18} />
+                    </span>
+                    <div>
+                      <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-wider">Year compliance</h4>
+                      <p className="text-sm font-bold text-stone-700">{yearlyAnalytics.overallYearPct}% checked YTD</p>
+                      <p className="text-[9px] text-stone-500 font-bold uppercase tracking-wider">
+                        {yearlyAnalytics.totalChecked} registered duty ticks this year
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-4 border border-stone-150 flex items-center gap-3 shadow-xs">
+                    <span className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                      <CheckCircle2 size={18} />
+                    </span>
+                    <div>
+                      <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-wider">Task Urgency distribution</h4>
+                      <div className="flex gap-3 mt-0.5">
+                        {['High', 'Medium', 'Low'].map(prio => {
+                          const cnt = tasks.filter(t => (t.priority || 'Medium') === prio).length;
+                          return (
+                            <span key={prio} className="text-[10px] font-extrabold text-stone-600">
+                              {prio}: <b className="text-stone-850">{cnt}</b>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Weekly tracker about card header info */}
+              {!isHeaderCollapsed && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="bg-amber-50/30 rounded-3xl p-5 border border-orange-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden animate-in slide-in-from-bottom-2 duration-150 shadow-sm"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <span className="p-2.5 bg-orange-100/50 text-orange-600 rounded-2xl">
+                      <Calendar size={20} />
+                    </span>
+                    <div>
+                      <h3 className="text-xs font-black text-stone-800 uppercase tracking-widest">
+                        Discipline Routines Tracker
+                      </h3>
+                      <p className="text-xs text-stone-500 font-medium">
+                        Define high-impact micro tasks and verify checklist completions daily to master extreme execution consistency.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setIsHeaderCollapsed(true)}
+                    className="text-xs font-black uppercase text-orange-850 hover:bg-orange-100 bg-orange-100/50 p-2 px-4 rounded-xl border border-orange-200/50 shrink-0 self-start sm:self-auto shadow-xs transition-colors"
+                  >
+                    Hide explanation
+                  </button>
+                </motion.div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* 3. Sub-tab Content: Tomorrow Planning (More Interesting View) */}
       {activeSubTab === 'Tomorrow' && (
-        <div className="space-y-4 animate-in fade-in duration-200">
+        <div className="flex-1 flex flex-col space-y-4 animate-in fade-in duration-200 overflow-visible">
           <div className="bg-gradient-to-br from-orange-50/60 to-purple-50/40 rounded-3xl p-5 border border-orange-100 shadow-md">
             
             {/* Header / Vibe controller */}
@@ -1583,8 +1717,8 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({
               </div>
             )}
 
-            {/* Staggered lists of Planned items */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 relative z-10">
+            {/* Staggered lists of Planned items - Sequential (One task per row) */}
+            <div className="flex flex-col gap-4 relative z-10">
               {tomorrowTasks.map((t, index) => {
                 const taskEmoji = getTaskEmoji(t.name, index);
                 const theme = CARD_THEMES[index % CARD_THEMES.length];
@@ -1637,10 +1771,9 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({
                     </div>
 
                     <div className="mt-2.5 relative">
-                      <input
-                        type="text"
+                      <DebouncedInput
                         value={t.name}
-                        onChange={(e) => handleEditTomorrowTask(t.id, e.target.value)}
+                        onChange={(val) => handleEditTomorrowTask(t.id, val)}
                         placeholder={`Describe strategic target #${index + 1}...`}
                         className={`w-full bg-transparent border-b border-transparent focus:border-orange-300 py-0.5 font-bold text-[18px] text-stone-850 outline-none transition-all placeholder:text-stone-400/80 ${
                           t.completed ? 'line-through text-stone-400/80' : ''
@@ -1671,9 +1804,9 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({
 
       {/* 4. Sub-tab Content: Reminder view utilizing the fully passed props */}
       {activeSubTab === 'Reminder' && (
-        <div className="space-y-4 animate-in fade-in duration-200">
+        <div className="animate-in fade-in duration-200 flex-1 flex flex-col min-h-[600px]">
           {students && onAddStudent && onUpdateStudent && onDeleteStudent && onClearCategory && filters && setFilters ? (
-            <div className="bg-white rounded-3xl border border-stone-200 shadow-sm overflow-hidden relative z-10 w-full">
+            <div className="flex-1 flex flex-col relative z-10 w-full">
               <ReminderTable
                 students={students}
                 onAddStudent={onAddStudent}
@@ -1697,245 +1830,7 @@ export const DailyPerformanceCheck: React.FC<DailyPerformanceCheckProps> = ({
         </div>
       )}
 
-      {/* 5. Space-saving Collapsible bottom elements defaults to HIDDEN */}
-      <div className="space-y-3 pt-2">
-        {/* Toggle bar for secondary settings and trends */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 bg-stone-50 border border-stone-200/60 rounded-2xl p-2 px-3 shadow-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="p-1 py-0.5 bg-orange-500 text-white rounded text-[8px] font-black uppercase font-mono">
-              SECONDARY SETUP
-            </span>
-            <span className="text-[10px] text-stone-500 font-bold">
-              Secondary details and week navigations are hidden as default
-            </span>
-          </div>
 
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => setIsActionBarCollapsed(!isActionBarCollapsed)}
-              className={`p-1 px-2.5 text-[9px] rounded-lg font-black uppercase tracking-wider transition-all border flex items-center gap-1 ${
-                !isActionBarCollapsed 
-                  ? 'bg-orange-500 text-white border-transparent' 
-                  : 'bg-white hover:bg-stone-100 text-stone-600 border-stone-200'
-              }`}
-            >
-              <SlidersHorizontal size={10} />
-              <span>{!isActionBarCollapsed ? 'Hide setups' : 'Show setup controls'}</span>
-            </button>
-
-            <button
-              onClick={() => setShowTrend(!showTrend)}
-              className={`p-1 px-2.5 text-[9px] rounded-lg font-black uppercase tracking-wider transition-all border flex items-center gap-1 ${
-                showTrend 
-                  ? 'bg-orange-500 text-white border-transparent' 
-                  : 'bg-white hover:bg-stone-100 text-stone-600 border-stone-200'
-              }`}
-              title="7-Day compliance trends collapsed to save layout vertical space"
-            >
-              📊
-              <span>{showTrend ? 'Hide trends' : 'Show trend charts'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Persistent Week Navigation bar (Number Two) */}
-        {!isActionBarCollapsed && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            className="bg-white rounded-2xl p-4 border border-stone-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden animate-in zoom-in-95 duration-150"
-          >
-            <div className="flex items-center gap-1 shrink-0">
-              <button 
-                onClick={() => navigateWeek('prev')}
-                className="p-1.5 bg-white hover:bg-stone-100 rounded-lg border border-stone-200 active:scale-95 transition-all text-stone-600"
-                title="Previous Week"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              
-              <div className="px-3 py-1 bg-stone-50 rounded-lg border border-stone-200 text-[10px] font-black text-stone-700 tracking-wider uppercase min-w-[150px] text-center shadow-inner">
-                {format(daysOfWeek[0], 'MMM dd')} - {format(daysOfWeek[6], 'MMM dd, yyyy')}
-              </div>
-
-              <button 
-                onClick={() => navigateWeek('next')}
-                className="p-1.5 bg-white hover:bg-stone-100 rounded-lg border border-stone-200 active:scale-95 transition-all text-stone-600"
-                title="Next Week"
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button 
-                onClick={goToCurrentWeek}
-                className="px-2.5 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-[10px] tracking-wider uppercase rounded-lg border border-orange-100 shadow-xs transition-all active:scale-95"
-              >
-                Back To Current Week
-              </button>
-
-              <button 
-                onClick={() => setShowOverview(!showOverview)}
-                className={`px-2.5 py-1.5 rounded-lg border font-bold text-[10px] tracking-wider uppercase shadow-xs transition-all active:scale-95 flex items-center gap-1 ${
-                  showOverview 
-                    ? 'bg-amber-50 border-amber-300 text-amber-800' 
-                    : 'bg-orange-50 border-orange-100 text-orange-700 hover:bg-orange-100'
-                }`}
-              >
-                <Clock size={11} />
-                <span>{showOverview ? 'Hide YTD Stats' : 'YTD compliance'}</span>
-              </button>
-
-              <button 
-                onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-                className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-[10px] tracking-wider uppercase rounded-lg border border-stone-200 shadow-xs transition-all flex items-center gap-1"
-              >
-                {isHeaderCollapsed ? "Show Info Card" : "Hide Info Card"}
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* 7-Day progress visual trends bar chart */}
-        {showTrend && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-white rounded-3xl p-4 border border-stone-200 shadow-sm animate-in fade-in duration-150"
-          >
-            <div className="flex items-center justify-between mb-3.5 pl-1">
-              <div className="flex items-center gap-1.5">
-                <span className="p-0.5 px-2 text-[8px] font-black uppercase text-orange-700 bg-orange-50 border border-orange-100 rounded-full">
-                  Discipline Velocity
-                </span>
-                <h3 className="text-[10px] font-black text-stone-800 uppercase tracking-widest">
-                  7-Day Completion Trend Check (%)
-                </h3>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-7 gap-1.5 pt-1">
-              {last7DaysStats.map((stat, i) => (
-                <div key={i} className="flex flex-col items-center group/trend relative">
-                  {/* Tooltip on hover */}
-                  <div className="absolute -top-9 scale-0 group-hover/trend:scale-100 transition-all bg-stone-800 text-white font-bold py-1 px-2 rounded text-[8px] pointer-events-none z-10 shadow uppercase tracking-wider min-w-[70px] text-center">
-                    {stat.count}/{stat.total} ({stat.percentage}%)
-                  </div>
-
-                  {/* Date labels on top */}
-                  <div className="mb-1.5 text-center">
-                    <p className={`text-[8px] font-black uppercase tracking-wider ${
-                      stat.isToday ? 'text-orange-600' : 'text-stone-400'
-                    }`}>
-                      {stat.dateLabel.split(' ')[0]}
-                    </p>
-                    <p className="text-[9px] font-bold text-stone-600">
-                      {stat.dateLabel.split(' ')[1]}
-                    </p>
-                  </div>
-
-                  {/* The dynamic bar container */}
-                  <div className="w-full bg-stone-50 border border-stone-100/80 rounded-xl h-16 relative overflow-hidden flex items-end">
-                    <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: `${stat.percentage}%` }}
-                      transition={{ duration: 0.5 }}
-                      className={`w-full rounded-b-lg transition-all ${
-                        stat.isToday 
-                          ? 'bg-gradient-to-t from-orange-400 to-orange-500' 
-                          : stat.percentage === 100 
-                            ? 'bg-emerald-500' 
-                            : stat.percentage >= 50 
-                              ? 'bg-amber-400' 
-                              : 'bg-fuchsia-400'
-                      }`}
-                    />
-                    <div className="absolute inset-x-0 bottom-1 flex justify-center pointer-events-none">
-                      <span className={`text-[8px] font-black ${
-                        stat.percentage > 30 ? 'text-white drop-shadow' : 'text-stone-500'
-                      }`}>
-                        {stat.percentage}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* YTD compliance statistics panel */}
-        {showOverview && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-stone-50/50 rounded-2xl p-4 border border-stone-200 shadow-inner grid grid-cols-1 md:grid-cols-2 gap-4"
-          >
-            <div className="bg-white rounded-xl p-3 border border-stone-150 flex items-center gap-3">
-              <span className="p-2 bg-orange-50 text-orange-600 rounded-lg shrink-0">
-                <Flame size={16} />
-              </span>
-              <div>
-                <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-wider">Year compliance</h4>
-                <p className="text-sm font-bold text-stone-700">{yearlyAnalytics.overallYearPct}% checked YTD</p>
-                <p className="text-[8px] text-stone-405 text-stone-550 font-bold uppercase tracking-wider">
-                  {yearlyAnalytics.totalChecked} registered duty ticks this year
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-3 border border-stone-150 flex items-center gap-3">
-              <span className="p-2 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
-                <CheckCircle2 size={16} />
-              </span>
-              <div>
-                <h4 className="text-[10px] font-black text-stone-400 uppercase tracking-wider">Task Urgency distribution</h4>
-                <div className="flex gap-2.5 mt-0.5">
-                  {['High', 'Medium', 'Low'].map(prio => {
-                    const cnt = tasks.filter(t => (t.priority || 'Medium') === prio).length;
-                    return (
-                      <span key={prio} className="text-[9px] font-extrabold text-stone-600">
-                        {prio}: <b className="text-stone-850">{cnt}</b>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Weekly tracker about card header info */}
-        {!isHeaderCollapsed && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            className="bg-amber-50/30 rounded-2xl p-4 border border-orange-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden animate-in slide-in-from-bottom-2 duration-150"
-          >
-            <div className="flex items-center gap-3">
-              <span className="p-2 bg-orange-100/50 text-orange-600 rounded-xl">
-                <Calendar size={18} />
-              </span>
-              <div>
-                <h3 className="text-xs font-black text-stone-800 uppercase tracking-widest">
-                  Discipline Routines Tracker
-                </h3>
-                <p className="text-[10px] text-stone-500 font-medium">
-                  Define high-impact micro tasks and verify checklist completions daily to master extreme execution consistency.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsHeaderCollapsed(true)}
-              className="text-[9px] font-black uppercase text-orange-850 hover:bg-orange-100 bg-orange-100/50 p-1 px-3 rounded-lg border border-orange-200/50 shrink-0 self-start sm:self-auto"
-            >
-              Hide explanation
-            </button>
-          </motion.div>
-        )}
-      </div>
 
     </div>
   );

@@ -1,0 +1,168 @@
+1038: depth 1 (1 open, 0 close) -> <div
+1044: depth 2 (1 open, 0 close) -> <div className="flex bg-orange-100/40 p-1 mb-4 md:mb-6 borde
+1065: depth 1 (0 open, 1 close) -> </div>
+1069: depth 2 (1 open, 0 close) -> <div ref={dpcRef} className="flex-1 flex flex-col space-y-4 
+1072: depth 3 (1 open, 0 close) -> <div className="flex justify-end px-2 sm:px-0">
+1073: depth 4 (1 open, 0 close) -> <div className="bg-stone-100 p-1 rounded-xl border border-st
+1086: depth 3 (0 open, 1 close) -> </div>
+1087: depth 2 (0 open, 1 close) -> </div>
+1090: depth 3 (1 open, 0 close) -> <div className="md:bg-white md:rounded-3xl md:border md:bord
+1092: depth 4 (1 open, 0 close) -> <div className="hidden md:block overflow-x-auto mobile-a4-wr
+1093: depth 5 (1 open, 0 close) -> <div className="a4-container shadow-none min-h-full">
+1104: depth 6 (1 open, 0 close) -> <div className="flex flex-col items-center gap-1">
+1113: depth 5 (0 open, 1 close) -> </div>
+1127: depth 6 (1 open, 0 close) -> <div className="flex items-center gap-2 max-w-sm animate-in 
+1151: depth 5 (0 open, 1 close) -> </div>
+1153: depth 6 (1 open, 0 close) -> <div className="flex items-center justify-between group/task
+1154: depth 7 (1 open, 0 close) -> <div className="flex items-center gap-2.5">
+1189: depth 6 (0 open, 1 close) -> </div>
+1190: depth 5 (0 open, 1 close) -> </div>
+1237: depth 4 (0 open, 1 close) -> </div>
+1238: depth 3 (0 open, 1 close) -> </div>
+1239: depth 2 (0 open, 1 close) -> </div>
+1241: depth 3 (1 open, 0 close) -> <div className="space-y-4 py-2 px-1">
+1245: depth 4 (1 open, 0 close) -> <div key={task.id} className="bg-white rounded-3xl border bo
+1247: depth 5 (1 open, 0 close) -> <div className="space-y-3.5 animate-in zoom-in-95 duration-1
+1248: depth 6 (1 open, 0 close) -> <div className="flex items-center justify-between border-b b
+1257: depth 5 (0 open, 1 close) -> </div>
+1258: depth 6 (1 open, 0 close) -> <div className="space-y-2">
+1271: depth 7 (1 open, 0 close) -> <div className="flex flex-col gap-2 pt-1 w-full">
+1273: depth 8 (1 open, 0 close) -> <div className="flex flex-wrap items-center gap-1.5 max-w-fu
+1284: depth 7 (0 open, 1 close) -> </div>
+1286: depth 8 (1 open, 0 close) -> <div className="flex items-center justify-between pt-2 borde
+1288: depth 9 (1 open, 0 close) -> <div className="flex bg-stone-100 p-0.5 rounded-xl border bo
+1299: depth 8 (0 open, 1 close) -> </div>
+1300: depth 7 (0 open, 1 close) -> </div>
+1301: depth 6 (0 open, 1 close) -> </div>
+1302: depth 5 (0 open, 1 close) -> </div>
+1311: depth 4 (0 open, 1 close) -> </div>
+1313: depth 5 (1 open, 0 close) -> <div className="flex items-center justify-between">
+1314: depth 6 (1 open, 0 close) -> <div
+1352: depth 5 (0 open, 1 close) -> </div>
+1360: depth 4 (0 open, 1 close) -> </div>
+1363: depth 5 (1 open, 0 close) -> <div className="grid grid-cols-7 gap-1.5 pt-1">
+1372: depth 6 (1 open, 0 close) -> <div key={day.toString()} className="flex flex-col items-cen
+1395: depth 5 (0 open, 1 close) -> </div>
+1398: depth 4 (0 open, 1 close) -> </div>
+1399: depth 3 (0 open, 1 close) -> </div>
+1403: depth 4 (1 open, 0 close) -> <div className="py-12 text-center bg-white rounded-3xl borde
+1405: depth 3 (0 open, 1 close) -> </div>
+1407: depth 2 (0 open, 1 close) -> </div>
+1411: depth 3 (1 open, 0 close) -> <div className="p-4 md:p-6 px-6 bg-white md:bg-stone-50/50 r
+1412: depth 4 (1 open, 0 close) -> <div>
+1420: depth 3 (0 open, 1 close) -> </div>
+1422: depth 4 (1 open, 0 close) -> <div className="flex items-center gap-2.5 mt-2 sm:mt-0">
+1436: depth 3 (0 open, 1 close) -> </div>
+1437: depth 2 (0 open, 1 close) -> </div>
+1441: depth 3 (1 open, 0 close) -> <div className="p-5 md:p-6 bg-white md:bg-orange-50/10 round
+1442: depth 4 (1 open, 0 close) -> <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-
+1443: depth 5 (1 open, 0 close) -> <div>
+1452: depth 4 (0 open, 1 close) -> </div>
+1453: depth 5 (1 open, 0 close) -> <div>
+1464: depth 4 (0 open, 1 close) -> </div>
+1465: depth 3 (0 open, 1 close) -> </div>
+1467: depth 4 (1 open, 0 close) -> <div className="flex justify-between items-center pt-2 gap-4
+1468: depth 5 (1 open, 0 close) -> <div className="flex gap-2 flex-wrap max-w-[280px]">
+1483: depth 4 (0 open, 1 close) -> </div>
+1491: depth 3 (0 open, 1 close) -> </div>
+1492: depth 2 (0 open, 1 close) -> </div>
+1496: depth 3 (1 open, 0 close) -> <div className="bg-white md:bg-stone-50 rounded-3xl md:round
+1497: depth 4 (1 open, 0 close) -> <div className="flex items-center gap-3 relative">
+1506: depth 5 (1 open, 0 close) -> <div className="relative ml-2" data-html2canvas-ignore="true
+1521: depth 6 (1 open, 0 close) -> <div className="absolute bottom-full left-0 mb-2 w-52 bg-whi
+1522: depth 7 (1 open, 0 close) -> <div className="mb-2 px-2 pt-1">
+1534: depth 6 (0 open, 1 close) -> </div>
+1535: depth 6 (1 open, 1 close) -> <div className="h-px bg-stone-100 my-1.5 mx-2"></div>
+1539: depth 5 (0 open, 1 close) -> </div>
+1541: depth 4 (0 open, 1 close) -> </div>
+1542: depth 3 (0 open, 1 close) -> </div>
+1546: depth 2 (0 open, 1 close) -> </div>
+1547: depth 1 (0 open, 1 close) -> </div>
+1552: depth 2 (1 open, 0 close) -> <div className="flex-1 flex flex-col space-y-4 animate-in fa
+1553: depth 3 (1 open, 0 close) -> <div className="bg-gradient-to-br from-orange-50/60 to-purpl
+1556: depth 4 (1 open, 0 close) -> <div className="flex flex-col sm:flex-row sm:items-center ju
+1557: depth 5 (1 open, 0 close) -> <div>
+1567: depth 4 (0 open, 1 close) -> </div>
+1570: depth 5 (1 open, 0 close) -> <div className="flex gap-1.5 bg-white border border-orange-1
+1591: depth 4 (0 open, 1 close) -> </div>
+1592: depth 3 (0 open, 1 close) -> </div>
+1595: depth 4 (1 open, 0 close) -> <div className="bg-white/90 p-3 rounded-2xl mb-4 border bord
+1596: depth 5 (1 open, 0 close) -> <div className="flex items-center gap-2.5">
+1597: depth 6 (1 open, 0 close) -> <div className="w-8 h-8 rounded-full border-2 border-orange-
+1599: depth 5 (0 open, 1 close) -> </div>
+1600: depth 6 (1 open, 0 close) -> <div>
+1607: depth 5 (0 open, 1 close) -> </div>
+1608: depth 4 (0 open, 1 close) -> </div>
+1611: depth 5 (1 open, 0 close) -> <div className="flex items-center gap-1">
+1627: depth 4 (0 open, 1 close) -> </div>
+1628: depth 3 (0 open, 1 close) -> </div>
+1632: depth 4 (1 open, 0 close) -> <div className="mb-4 bg-orange-50/25 border border-orange-10
+1637: depth 5 (1 open, 0 close) -> <div className="flex flex-wrap gap-1.5">
+1648: depth 4 (0 open, 1 close) -> </div>
+1649: depth 3 (0 open, 1 close) -> </div>
+1653: depth 4 (1 open, 0 close) -> <div className="flex flex-col gap-4 relative z-10">
+1669: depth 5 (1 open, 0 close) -> <div className="flex items-start justify-between gap-2.5">
+1670: depth 6 (1 open, 0 close) -> <div className="flex items-center gap-2">
+1677: depth 5 (0 open, 1 close) -> </div>
+1679: depth 6 (1 open, 0 close) -> <div className="flex items-center gap-1">
+1699: depth 7 (1 open, 0 close) -> <div className="w-1 h-1 rounded-full bg-stone-305 bg-stone-4
+1702: depth 6 (0 open, 1 close) -> </div>
+1703: depth 5 (0 open, 1 close) -> </div>
+1705: depth 6 (1 open, 0 close) -> <div className="mt-2.5 relative">
+1715: depth 5 (0 open, 1 close) -> </div>
+1721: depth 6 (1 open, 0 close) -> <div className="col-span-2 text-center py-8 bg-white rounded
+1725: depth 5 (0 open, 1 close) -> </div>
+1727: depth 4 (0 open, 1 close) -> </div>
+1733: depth 3 (0 open, 1 close) -> </div>
+1734: depth 2 (0 open, 1 close) -> </div>
+1739: depth 3 (1 open, 0 close) -> <div className="animate-in fade-in duration-200 flex-1 flex 
+1741: depth 4 (1 open, 0 close) -> <div className="flex-1 flex flex-col relative z-10 w-full">
+1756: depth 3 (0 open, 1 close) -> </div>
+1758: depth 4 (1 open, 0 close) -> <div className="p-12 text-center text-xs font-bold text-ston
+1760: depth 3 (0 open, 1 close) -> </div>
+1762: depth 2 (0 open, 1 close) -> </div>
+1766: depth 3 (1 open, 0 close) -> <div className="space-y-3 pt-2 shrink-0">
+1768: depth 4 (1 open, 0 close) -> <div className="flex flex-wrap items-center justify-between 
+1769: depth 5 (1 open, 0 close) -> <div className="flex items-center gap-1.5">
+1776: depth 4 (0 open, 1 close) -> </div>
+1778: depth 5 (1 open, 0 close) -> <div className="flex gap-1.5">
+1803: depth 4 (0 open, 1 close) -> </div>
+1804: depth 3 (0 open, 1 close) -> </div>
+1813: depth 4 (1 open, 0 close) -> <div className="flex items-center gap-1 shrink-0">
+1822: depth 5 (1 open, 0 close) -> <div className="px-3 py-1 bg-stone-50 rounded-lg border bord
+1824: depth 4 (0 open, 1 close) -> </div>
+1833: depth 3 (0 open, 1 close) -> </div>
+1835: depth 4 (1 open, 0 close) -> <div className="flex items-center gap-2 flex-wrap">
+1861: depth 3 (0 open, 1 close) -> </div>
+1872: depth 4 (1 open, 0 close) -> <div className="flex items-center justify-between mb-3.5 pl-
+1873: depth 5 (1 open, 0 close) -> <div className="flex items-center gap-1.5">
+1880: depth 4 (0 open, 1 close) -> </div>
+1881: depth 3 (0 open, 1 close) -> </div>
+1883: depth 4 (1 open, 0 close) -> <div className="grid grid-cols-7 gap-1.5 pt-1">
+1885: depth 5 (1 open, 0 close) -> <div key={i} className="flex flex-col items-center group/tre
+1887: depth 6 (1 open, 0 close) -> <div className="absolute -top-9 scale-0 group-hover/trend:sc
+1889: depth 5 (0 open, 1 close) -> </div>
+1892: depth 6 (1 open, 0 close) -> <div className="mb-1.5 text-center">
+1901: depth 5 (0 open, 1 close) -> </div>
+1904: depth 6 (1 open, 0 close) -> <div className="w-full bg-stone-50 border border-stone-100/8
+1919: depth 7 (1 open, 0 close) -> <div className="absolute inset-x-0 bottom-1 flex justify-cen
+1925: depth 6 (0 open, 1 close) -> </div>
+1926: depth 5 (0 open, 1 close) -> </div>
+1927: depth 4 (0 open, 1 close) -> </div>
+1929: depth 3 (0 open, 1 close) -> </div>
+1940: depth 4 (1 open, 0 close) -> <div className="bg-white rounded-xl p-3 border border-stone-
+1944: depth 5 (1 open, 0 close) -> <div>
+1950: depth 4 (0 open, 1 close) -> </div>
+1951: depth 3 (0 open, 1 close) -> </div>
+1953: depth 4 (1 open, 0 close) -> <div className="bg-white rounded-xl p-3 border border-stone-
+1957: depth 5 (1 open, 0 close) -> <div>
+1959: depth 6 (1 open, 0 close) -> <div className="flex gap-2.5 mt-0.5">
+1968: depth 5 (0 open, 1 close) -> </div>
+1969: depth 4 (0 open, 1 close) -> </div>
+1970: depth 3 (0 open, 1 close) -> </div>
+1981: depth 4 (1 open, 0 close) -> <div className="flex items-center gap-3">
+1985: depth 5 (1 open, 0 close) -> <div>
+1992: depth 4 (0 open, 1 close) -> </div>
+1993: depth 3 (0 open, 1 close) -> </div>
+2003: depth 2 (0 open, 1 close) -> </div>
+2005: depth 1 (0 open, 1 close) -> </div>

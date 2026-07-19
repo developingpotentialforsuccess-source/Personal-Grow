@@ -121,9 +121,15 @@
       @media (max-width: 8.5in) {
         .mobile-a4-wrapper {
           overflow-x: auto !important;
+          display: block !important;
           -webkit-overflow-scrolling: touch;
-          width: 100vw;
+          width: 100%;
+          max-width: 100%;
           padding-bottom: 20px;
+        }
+        .mobile-a4-wrapper > .a4-container {
+          min-width: 8.27in !important;
+          width: 8.27in !important;
         }
       }
 

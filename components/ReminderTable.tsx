@@ -101,7 +101,7 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
   settings,
   onUpdateSettings
 }) => {
-  const [viewMode, setViewMode] = useState<'All' | 'Active' | 'Completed' | 'Archived'>('All');
+  const [viewMode, setViewMode] = useState<'Active' | 'Completed'>('Active');
   const [showHistory, setShowHistory] = useState(false);
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [layoutMode, setLayoutMode] = useState<'Table' | 'Board'>('Board');
@@ -177,14 +177,10 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
 
   // View state dispatcher
   let baseList = [];
-  if (viewMode === 'Archived') {
-    baseList = archivedReminders;
-  } else if (viewMode === 'Active') {
-    baseList = activeReminders.filter(s => s.status !== 'Completed');
-  } else if (viewMode === 'Completed') {
+  if (viewMode === 'Completed') {
     baseList = activeReminders.filter(s => s.status === 'Completed');
   } else {
-    baseList = activeReminders;
+    baseList = activeReminders.filter(s => s.status !== 'Completed');
   }
 
   const displayedReminders = sortBy === 'Deadline' 
@@ -310,120 +306,103 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-transparent overflow-hidden text-stone-800 relative w-full h-full">
-      {/* Header Bar */}
-      <div className="bg-white/[0.01] backdrop-blur-3xl rounded-[32px] p-6 mb-6 flex flex-col lg:flex-row lg:items-center justify-between shadow-sm border border-white/10 gap-4 transition-all overflow-hidden max-w-full">
+    <div className="flex-grow flex flex-col bg-transparent text-stone-800 relative w-full h-full pb-12">
+      {/* Header Bar - Title & Subtitle only for elegant presentation */}
+      <div className="bg-white/80 backdrop-blur-3xl rounded-[32px] p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between shadow-sm border border-stone-200 gap-4 transition-all max-w-full shrink-0">
         <div className="flex items-center gap-4 shrink-0">
           <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-orange-500/30">
             <Bell size={24} strokeWidth={3} />
           </div>
           <div>
             <h1 className="text-xl font-black text-stone-800 uppercase tracking-tight leading-none italic">Growth Reminders</h1>
-            <p className="text-[10px] font-bold text-stone-605 text-stone-500 uppercase tracking-widest mt-1">Staff Tasks & Notifications</p>
-          </div>
-        </div>
-
-        {/* Scrollable Container on Mobile, Normal Inline on Desktop */}
-        <div className="overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 flex items-center lg:justify-end custom-scrollbar relative z-50">
-          <div className="flex items-center gap-3 shrink-0 min-w-max pr-4">
-            <div className="flex bg-white/50 border border-slate-100 rounded-xl p-1 relative z-50">
-              {(['Manual', 'Deadline'] as const).map(mode => (
-                <button 
-                  key={mode}
-                  onClick={() => setSortBy(mode)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sortBy === mode ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'text-stone-500 hover:text-stone-850'}`}
-                >
-                  {mode === 'Manual' ? <GripVertical size={14} className="inline mr-1" /> : <Calendar size={14} className="inline mr-1" />}
-                  {mode}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex bg-white/50 border border-slate-100 rounded-xl p-1 relative z-50">
-              {(['Table', 'Board'] as const).map(mode => (
-                <button 
-                  key={mode}
-                  onClick={() => setLayoutMode(mode)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${layoutMode === mode ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-stone-500 hover:text-stone-850'}`}
-                >
-                  {mode === 'Table' ? <LayoutGrid size={14} className="inline mr-1" /> : <Palette size={14} className="inline mr-1" />}
-                  {mode}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex bg-white/50 border border-slate-100 rounded-xl p-1 relative z-50">
-              {(['All', 'Active', 'Completed', 'Archived'] as const).map(mode => (
-                <button 
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/20' : 'text-stone-500 hover:text-stone-850'}`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-64">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
-              <input 
-                type="text" 
-                placeholder="Search reminders..." 
-                className="w-full h-10 pl-10 pr-4 bg-white/50 border border-slate-100 rounded-xl text-[11px] font-bold text-stone-750 outline-none focus:ring-4 focus:ring-orange-500/10 transition-all"
-                value={filters.searchQuery}
-                onChange={e => setFilters({...filters, searchQuery: e.target.value})}
-              />
-            </div>
-
-            {activeReminders.some(r => r.status === 'Completed') && (
-              <button 
-                onClick={() => {
-                  activeReminders.forEach(r => {
-                    if (r.status === 'Completed') {
-                      onUpdateStudent(r.id, { isArchived: true });
-                    }
-                  });
-                }}
-                className="flex items-center gap-2 h-10 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all active:scale-95"
-                title="Archive Completed Reminders"
-              >
-                <Archive size={14} /> Archive Completed ({activeReminders.filter(r => r.status === 'Completed').length})
-              </button>
-            )}
-
-            <button 
-              onClick={() => onAddStudent({ category: 'Reminder' })}
-              className="flex items-center gap-2 h-10 px-5 bg-orange-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95"
-            >
-              <Plus size={16} strokeWidth={3} /> New Reminder
-            </button>
-
-            <button 
-              onClick={() => setFilters({ ...filters, showHidden: !filters.showHidden })}
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${filters.showHidden ? 'bg-orange-600 text-white' : 'bg-white text-stone-400 border border-slate-100 hover:bg-slate-50'}`}
-              title={filters.showHidden ? "Hide Hidden Tasks" : "Show Hidden Tasks"}
-            >
-              {filters.showHidden ? <Eye size={18} /> : <EyeOff size={18} />}
-            </button>
-            
-            {role === 'Admin' && (
-              <button 
-                onClick={() => onClearCategory(['Reminder'])}
-                className="w-10 h-10 bg-orange-50 text-orange-500 border border-orange-100 rounded-xl flex items-center justify-center hover:bg-orange-500 hover:text-white transition-all shadow-sm"
-                title="Clear All Reminders"
-              >
-                <Trash2 size={18} />
-              </button>
-            )}
+            <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest mt-1">Staff Tasks & Notifications</p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 bg-white/[0.01] backdrop-blur-3xl rounded-[40px] shadow-2xl border border-white/10 overflow-hidden flex flex-col">
-        <div className="overflow-auto flex-1 custom-scrollbar overflow-x-auto mobile-a4-wrapper" style={{ padding: '0.2in 0.2in 0.3in 0.2in' }}>
+      {/* Control Rows: Exactly Two Lines */}
+      <div className="bg-white/80 backdrop-blur-3xl rounded-[32px] p-4 md:p-6 mb-6 border border-stone-200/80 shadow-sm flex flex-col gap-3 md:gap-4">
+        {/* Line 1: manual table active and search */}
+        <div className="grid grid-cols-4 gap-1.5 md:gap-3 items-center">
+          {/* Manual Sort Button */}
+          <button 
+            onClick={() => setSortBy('Manual')}
+            className={`h-9 md:h-11 px-1 md:px-4 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 md:gap-2 border shadow-xs active:scale-95 whitespace-nowrap overflow-hidden ${sortBy === 'Manual' ? 'bg-orange-500 text-white border-orange-600 shadow-orange-500/20' : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+          >
+            <GripVertical size={12} className="shrink-0" /> <span className="hidden sm:inline">Manual</span><span className="sm:hidden">Man</span>
+          </button>
+
+          {/* Table Layout Button */}
+          <button 
+            onClick={() => setLayoutMode('Table')}
+            className={`h-9 md:h-11 px-1 md:px-4 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 md:gap-2 border shadow-xs active:scale-95 whitespace-nowrap overflow-hidden ${layoutMode === 'Table' ? 'bg-indigo-600 text-white border-indigo-700 shadow-indigo-500/20' : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+          >
+            <LayoutGrid size={12} className="shrink-0" /> <span className="hidden sm:inline">Table</span><span className="sm:hidden">Tab</span>
+          </button>
+
+          {/* Active Filter Status Button */}
+          <button 
+            onClick={() => setViewMode('Active')}
+            className={`h-9 md:h-11 px-1 md:px-4 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 md:gap-2 border shadow-xs active:scale-95 whitespace-nowrap overflow-hidden ${viewMode === 'Active' ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-500/20' : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+          >
+            <CheckCircle2 size={12} className="shrink-0" /> <span className="hidden sm:inline">Active</span><span className="sm:hidden">Act</span>
+          </button>
+
+          {/* Search Input */}
+          <div className="relative w-full h-9 md:h-11">
+            <Search size={12} className="absolute left-2 md:left-3.5 top-1/2 -translate-y-1/2 text-stone-400 shrink-0" />
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              className="w-full h-full pl-6 md:pl-10 pr-2 md:pr-4 bg-stone-50 border border-stone-200 rounded-xl text-[9px] md:text-[11px] font-bold text-stone-750 outline-none focus:bg-white focus:ring-4 focus:ring-orange-500/10 transition-all shadow-inner"
+              value={filters.searchQuery}
+              onChange={e => setFilters({...filters, searchQuery: e.target.value})}
+            />
+          </div>
+        </div>
+
+        {/* Line 2: detail line, book completed, and new remainder */}
+        <div className="grid grid-cols-4 gap-1.5 md:gap-3 items-center">
+          {/* Detail Line (Deadline) Sort Button */}
+          <button 
+            onClick={() => setSortBy('Deadline')}
+            className={`h-9 md:h-11 px-1 md:px-4 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 md:gap-2 border shadow-xs active:scale-95 whitespace-nowrap overflow-hidden ${sortBy === 'Deadline' ? 'bg-orange-500 text-white border-orange-600 shadow-orange-500/20' : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+          >
+            <Calendar size={12} className="shrink-0" /> <span className="hidden sm:inline">Line</span><span className="sm:hidden">Lin</span>
+          </button>
+
+          {/* Board Layout (book is board) Layout Button */}
+          <button 
+            onClick={() => setLayoutMode('Board')}
+            className={`h-9 md:h-11 px-1 md:px-4 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 md:gap-2 border shadow-xs active:scale-95 whitespace-nowrap overflow-hidden ${layoutMode === 'Board' ? 'bg-indigo-600 text-white border-indigo-700 shadow-indigo-500/20' : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+          >
+            <Palette size={12} className="shrink-0" /> <span className="hidden sm:inline">Board</span><span className="sm:hidden">Brd</span>
+          </button>
+
+          {/* Completed Filter Status Button */}
+          <button 
+            onClick={() => setViewMode('Completed')}
+            className={`h-9 md:h-11 px-1 md:px-4 rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 md:gap-2 border shadow-xs active:scale-95 whitespace-nowrap overflow-hidden ${viewMode === 'Completed' ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-500/20' : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'}`}
+          >
+            <CheckSquare size={12} className="shrink-0" /> <span className="hidden sm:inline">Done</span><span className="sm:hidden">Don</span>
+          </button>
+
+          {/* New Reminder Add Button */}
+          <button 
+            onClick={() => onAddStudent({ category: 'Reminder' })}
+            className="h-9 md:h-11 w-full px-1 md:px-4 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-md shadow-orange-500/20 hover:shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1 md:gap-2 shrink-0 border border-orange-600 font-extrabold whitespace-nowrap overflow-hidden"
+          >
+            <Plus size={14} strokeWidth={3} className="shrink-0" /> <span className="hidden sm:inline">New</span><span className="sm:hidden">New</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main List Container: Grows dynamically with no inner vertical scrolling block */}
+      <div className="bg-white/40 backdrop-blur-3xl rounded-[32px] shadow-sm border border-stone-200/50 flex flex-col mb-6 overflow-hidden flex-1">
+        <div className="overflow-x-auto overflow-y-auto mobile-a4-wrapper flex-1" style={{ padding: '0.2in' }}>
           {/* Main View Area */}
           {layoutMode === 'Table' ? (
-            <div className="a4-container shadow-none min-h-full">
+            <div className="a4-container shadow-none">
               <table className="w-full border-collapse table-auto">
                 <thead className="sticky top-0 z-40 bg-white/10 backdrop-blur-xl">
                 <tr className="border-b border-white/20">
@@ -785,7 +764,7 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
       </div>
 
       {/* Collapsible Archived Reminders History Section */}
-      <div className="mt-6 bg-white/[0.01] backdrop-blur-3xl rounded-[32px] border border-white/10 overflow-hidden shadow-xl">
+      <div className="mt-6 bg-white/[0.01] backdrop-blur-3xl rounded-[32px] border border-white/10 overflow-hidden shadow-xl shrink-0">
         <button 
           onClick={() => setShowHistory(!showHistory)}
           className="w-full px-6 py-4 flex items-center justify-between text-slate-850 hover:bg-white/5 transition-all outline-none"
@@ -871,7 +850,7 @@ const ReminderTable: React.FC<ReminderTableProps> = ({
       {/* Mobile Floating Action Button (FAB) to instantly add new reminders */}
       <button 
         onClick={() => onAddStudent({ category: 'Reminder' })}
-        className="lg:hidden fixed bottom-6 right-6 z-[9999] w-14 h-14 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-full flex items-center justify-center shadow-2xl shadow-orange-500/40 border border-white/20 transition-all cursor-pointer"
+        className="fixed bottom-6 right-6 z-[9999] w-14 h-14 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-full flex items-center justify-center shadow-2xl shadow-orange-500/40 border border-white/20 transition-all cursor-pointer"
         title="Quick Add Reminder"
         id="quick-add-reminder-fab"
       >

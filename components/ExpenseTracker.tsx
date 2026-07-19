@@ -1354,7 +1354,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ data, onUpdate, 
   };
 
   return (
-    <div className="expense-tracker-container flex-1 flex flex-col h-full bg-white/[0.005] backdrop-blur-3xl p-3 md:p-6 overflow-y-auto md:overflow-hidden font-sans">
+    <div className="expense-tracker-container flex-1 flex flex-col h-full bg-white/[0.005] backdrop-blur-3xl p-3 md:p-6 overflow-y-auto custom-scrollbar-amber font-sans">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic flex items-center gap-3 drop-shadow-sm">
@@ -1697,7 +1697,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ data, onUpdate, 
         </div>
       </div>
 
-      <div className="expense-columns-wrapper flex-1 flex flex-col gap-6 overflow-visible overflow-y-auto custom-scrollbar-amber pr-2 pb-20">
+      <div className="expense-columns-wrapper flex-none md:flex-1 flex flex-col gap-6 overflow-visible md:overflow-y-auto custom-scrollbar-amber pr-2 pb-20">
         {/* Structured Category List */}
         <div className="expense-column w-full bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl border border-slate-200/50 dark:border-slate-800/80 rounded-[36px] shadow-sm flex flex-col overflow-hidden text-left shrink-0">
             <div className="p-4 border-b border-slate-100 flex flex-col gap-3 bg-slate-50/50">
@@ -1817,7 +1817,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ data, onUpdate, 
                                                       value={inlineInputs[cat] || ''}
                                                       onChange={(e) => setInlineInputs({...inlineInputs, [cat]: e.target.value})}
                                                       onKeyDown={(e) => e.key === 'Enter' && handleInlineAdd(cat)}
-                                                      className="w-24 sm:w-32 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl py-1.5 px-3 text-right text-xs font-black outline-none placeholder:text-slate-350 dark:placeholder:text-slate-650 transition-all focus:border-amber-500 focus:bg-white text-slate-900 dark:text-slate-150 shadow-inner"
+                                                      className="w-28 sm:w-40 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl py-2.5 px-4 text-right text-sm font-black outline-none placeholder:text-slate-350 dark:placeholder:text-slate-650 transition-all focus:border-amber-500 focus:bg-white text-slate-900 dark:text-slate-150 shadow-inner"
                                                     />
                                                 </div>
                                                 {hasInput && (
@@ -2084,12 +2084,12 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({ data, onUpdate, 
                     value={smartInput}
                     onChange={(e) => setSmartInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSmartAdd()}
-                    className="flex-1 w-full bg-slate-50 border border-slate-200 dark:bg-slate-800/50 dark:border-slate-700/60 focus:border-amber-500 rounded-2xl py-3 px-4 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none transition-all placeholder:text-slate-400 placeholder:italic shadow-inner"
+                    className="flex-1 w-full bg-slate-50 border border-slate-200 dark:bg-slate-800/50 dark:border-slate-700/60 focus:border-amber-500 rounded-2xl py-4 px-5 text-sm font-bold text-slate-800 dark:text-slate-100 outline-none transition-all placeholder:text-slate-400 placeholder:italic shadow-inner"
                 />
                 <button 
                     onClick={handleSmartAdd}
                     disabled={!smartInput.trim()}
-                    className="px-6 py-3 shrink-0 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-[16px] font-black text-[11px] uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-md shadow-amber-500/20"
+                    className="px-8 py-4 shrink-0 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-[16px] font-black text-[13px] uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-md shadow-amber-500/20"
                 >
                     Add
                 </button>
